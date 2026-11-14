@@ -38,6 +38,7 @@ final class MouseTap {
         let p = e.location, flags = e.flags, c = wm.config
         let plain = flags.intersection([.maskControl, .maskCommand, .maskAlternate, .maskShift]).isEmpty
         let ctrlOnly = flags.intersection([.maskControl, .maskCommand, .maskAlternate, .maskShift]) == .maskControl
+        if wm.moving, type != .tapDisabledByTimeout { return false }   // the app's own hold on a window: hands off
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }   // macOS turns a slow tap off

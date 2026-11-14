@@ -39,6 +39,7 @@ Every key can be changed in Preferences → Shortcuts. ⌘K lists the current on
 | ⌃⌥J / ⌃⌥B | Flip a split between columns and rows / balance all splits |
 | ⌘⌥↑ / ⌘⌥↓ | Maximize or restore / float or unfloat |
 | ⌘⌥→ | Move the window to the other display |
+| ⌃⌥⌘ 1–9 | Move the window to space 1–9 and follow it |
 | ⌃⌥⇧ ← → ↑ ↓ | Snap to the left, right, top or bottom half |
 | ⌃⌥⇧ U I J K | Snap to a quarter |
 | ⌃⌥⇧ D F G / E T | Snap to a third / two thirds |
@@ -65,13 +66,14 @@ Then turn on **Aeris Tiler** in System Settings → Privacy & Security → Acces
 ## Preferences, menu bar, command line
 
 - **Menu bar**: the item shows the layout (TILE, SWISS, SWISS SOFT, FLOAT, PAUSED). Its menu has every action, the presets, and Preferences.
-- **Preferences**: gaps, padding, default layout and preset, mouse behaviour, border, shortcuts, floating apps, launch at login.
+- **Preferences**: gaps, padding, default layout and preset, mouse behaviour, border width (0 = none) and colour, shortcuts, floating apps, launch at login.
 - **Config file**: `~/.config/aeris-tiler/config.json`. Preferences writes it; after an edit by hand run `aeris-tiler reload`. Keys left out keep their default.
 - **Command line**: `aeris-tiler` talks to the running app, so scripts and agents can do all that the GUI can.
 
 ```bash
 aeris-tiler actions              # every action id with its key
-aeris-tiler snap-left-half       # run any action
+aeris-tiler snap-left-half       # run any action on the focused window
+aeris-tiler space-2 --window 42  # or on a window by id (ids come from `query`)
 aeris-tiler set preset main      # layout tile|grid|float · preset swiss|columns|main|board · hard true|false · login true|false
 aeris-tiler query                # JSON: screens, layouts, windows, frames
 ```
@@ -85,12 +87,12 @@ aeris-tiler query                # JSON: screens, layouts, windows, frames
 | `Sources/AerisTiler/Hotkeys.swift`, `MouseTap.swift`, `Border.swift` | Global hotkeys, mouse behaviour, focus border. |
 | `Sources/AerisTiler/Preferences.swift`, `StatusMenu.swift`, `Keysheet.swift` | Preferences window, menu bar menu, ⌘K cheat sheet. |
 | `Sources/AerisTiler/main.swift` | App start, command line, app icon. |
-| `Sources/CPrivate/` | The private window-server calls: window ids, spaces, focus without raise, border stacking. |
+| `Sources/CPrivate/` | The private window-server calls: window ids, reading spaces, focus without raise, border stacking. |
 | `build.sh` | Build, bundle, sign, install. `swift test` runs the unit tests. |
 
 ## Limits
 
-- **Move window to space 1–9 (⌃⌥⌘ 1–9) does not work on macOS 27.** The window server refuses the call with SIP on; the app beeps. It may work on older versions.
+- **Move window to space 1–9 (⌃⌥⌘ 1–9)** needs the macOS shortcuts "Switch to Desktop 1…9" turned on (System Settings → Keyboard → Keyboard Shortcuts → Mission Control). The window server refuses a direct move with SIP on, so the app does what a hand does: it holds the window by its title bar and switches space. It takes about 2 s, the pointer jumps to the window and back, and you follow the window. Keep the mouse still meanwhile. Without the shortcut, or for a space on another display that is not showing, the app beeps.
 - No window animations and no instant space switch: both need SIP off.
 - Apps have a minimum size. A resize stops when a neighbour reaches its minimum.
 - Resizing goes through Accessibility, one app at a time, so it is not as smooth as Hyprland.
@@ -129,6 +131,7 @@ Each space has one of three layouts. ⌘⌥← cycles them; the bar shows the cu
 | ⌘⌥↑ | Maximize (keeps the window in the layout, unlike the green button) |
 | ⌘⌥↓ | Float / unfloat the window |
 | ⌘⌥→ | Move the window to the other display |
+| ⌃⌥⌘ 1–9 | Move the window to space 1–9 and follow it |
 | ⌘⌥← | Cycle layout: tile → grid → float |
 | ⌘⇧Space | Hide / show the bar (sketchybar) |
 | ⌃← / ⌃→ | Switch space (native macOS) |

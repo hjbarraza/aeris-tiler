@@ -58,6 +58,7 @@ final class WindowManager {
     private var watched: Set<WindowID> = []
     private var pending: DispatchWorkItem?
     private var hold: Hold?
+    private(set) var moving = false                    // a window is on its way to another space
     let border = Border()
     private let cid = SLSMainConnectionID()
     private let me = getpid()
@@ -250,7 +251,9 @@ final class WindowManager {
         return axApp(pid).element(kAXFocusedWindowAttribute)?.windowID
     }
 
-    var focused: Win? { focusedID.flatMap { id in wins.first { $0.id == id } } }
+    /// The window actions work on: the focused one, or `subject` when the command line names one.
+    var focused: Win? { (subject ?? focusedID).flatMap { id in wins.first { $0.id == id } } }
+    var subject: WindowID?
 
     var mouseScreen: Int {
         NSScreen.screens.firstIndex { $0.frame.contains(NSEvent.mouseLocation) } ?? 0
@@ -260,7 +263,7 @@ final class WindowManager {
     /// windows while a mouse button is down.
     func reconcile(force: Bool = false) {
         pending?.cancel()
-        guard AXIsProcessTrusted() else { return }
+        guard AXIsProcessTrusted(), !moving else { return }
         let screens = self.screens()
         var snap = snapshot(screens)
         let focus = focusedID
@@ -340,7 +343,7 @@ final class WindowManager {
     }
 
     private func updateBorder() {
-        if config.border, let w = focused, w.standard, !w.fullscreen {
+        if config.borderWidth > 0, let w = focused, w.standard, !w.fullscreen {
             border.show(w.id, w.ax.frame ?? w.frame, config)
         } else {
             border.hide()
@@ -481,10 +484,73 @@ final class WindowManager {
         w.ax.setFrame(CGRect(x: v.midX - size.width / 2, y: v.midY - size.height / 2, width: size.width, height: size.height).integral)
     }
 
+    /// Send the focused window to space `n` and follow it there.
+    ///
+    /// The window server refuses to move another app's window between spaces while SIP is on.
+    /// What macOS itself allows: hold a window by its title bar and switch space, and the
+    /// window comes along. So this presses the mouse on the title bar, sends the "Switch to
+    /// Desktop n" shortcut, and lets go. That shortcut must be on in System Settings →
+    /// Keyboard → Keyboard Shortcuts → Mission Control.
     private func toSpace(_ n: Int) {
+        let s = screens(), managed = (SLSCopyManagedDisplaySpaces(cid) as? [[String: Any]]) ?? []
         let ids = userSpaces()
-        guard let w = focused, n >= 1, n <= ids.count else { return }
-        if !aeris_move_window_to_space(w.id, ids[n - 1]) { NSSound.beep() }
+        guard let w = focused, w.screen < s.count, n >= 1, n <= ids.count, !moving else { return }
+        let target = ids[n - 1]
+        if s[w.screen].space == target { return }
+        // The target is what another display shows now: just move the window over.
+        if let other = s.firstIndex(where: { $0.space == target }) {
+            let v = area(s[other])
+            let size = CGSize(width: min(w.frame.width, v.width), height: min(w.frame.height, v.height))
+            w.ax.setFrame(CGRect(x: v.midX - size.width / 2, y: v.midY - size.height / 2, width: size.width, height: size.height).integral)
+            return
+        }
+        // Holding a window only carries it between spaces of its own display.
+        let mine = managed.first { (($0["Current Space"] as? [String: Any])?["id64"] as? UInt64) == s[w.screen].space }
+        let onMyDisplay = ((mine?["Spaces"] as? [[String: Any]]) ?? []).contains { $0["id64"] as? UInt64 == target }
+        // macOS stores the shortcut for Desktop n under id 117 + n: (character, key code, modifiers).
+        let keys = UserDefaults(suiteName: "com.apple.symbolichotkeys")?.dictionary(forKey: "AppleSymbolicHotKeys")?[String(117 + n)] as? [String: Any]
+        let params = (keys?["value"] as? [String: Any])?["parameters"] as? [Int]
+        guard onMyDisplay, keys?["enabled"] as? Bool == true, let params, params.count == 3 else { NSSound.beep(); return }
+
+        // Nothing else may touch windows or focus during the hold: reconcile and focus follows
+        // mouse stand still while `moving` is set.
+        moving = true
+        let back = CGEvent(source: nil)?.location ?? .zero
+        focus(w, raise: true)   // an active window starts to drag on the first click
+        func mouse(_ type: CGEventType, _ p: CGPoint) {
+            CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+        }
+        func after(_ t: Double, _ work: @escaping () -> Void) { DispatchQueue.main.asyncAfter(deadline: .now() + t, execute: work) }
+        var grab = CGPoint.zero
+        after(0.25) {
+            // Where to hold the window: the gap between the minimize and zoom buttons is title
+            // bar in every app, also in browsers whose tabs fill the rest of the top edge. (Not
+            // the gap next to the close button: a miss there would close the window.)
+            let f = w.ax.frame ?? w.frame
+            grab = CGPoint(x: f.midX, y: f.minY + 5)
+            if let m = w.ax.element(kAXMinimizeButtonAttribute)?.frame, let z = w.ax.element(kAXZoomButtonAttribute)?.frame, z.minX > m.maxX {
+                grab = CGPoint(x: (m.maxX + z.minX) / 2, y: m.midY)
+            }
+            mouse(.mouseMoved, grab)
+        }
+        after(0.35) { mouse(.leftMouseDown, grab) }
+        // Keep the drag alive through the switch: macOS only carries a window that still moves.
+        for i in 1...34 { after(0.40 + 0.04 * Double(i)) { mouse(.leftMouseDragged, CGPoint(x: grab.x + 8 + CGFloat(i % 2) * 2, y: grab.y + 8 + CGFloat(i % 2) * 2)) } }
+        after(0.70) {
+            let src = CGEventSource(stateID: .hidSystemState)
+            for down in [true, false] {
+                let e = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(params[1]), keyDown: down)
+                e?.flags = CGEventFlags(rawValue: UInt64(params[2]))
+                e?.post(tap: .cghidEventTap)
+            }
+        }
+        after(1.85) { mouse(.leftMouseDragged, grab) }
+        after(1.90) { mouse(.leftMouseUp, grab) }
+        after(2.05) { [self] in
+            CGWarpMouseCursorPosition(back)
+            moving = false
+            reconcile(force: true)
+        }
     }
 
     // MARK: - Resize: hold a key to keep moving a border

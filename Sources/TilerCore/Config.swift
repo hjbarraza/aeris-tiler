@@ -104,8 +104,7 @@ public struct Config: Codable, Equatable {
     public var copyOnSelect = true          // selecting text copies it
     public var rightClickPaste = true       // right-click in the focused text field pastes
     public var clipboardSkipApps = ["com.mitchellh.ghostty", "com.apple.finder"]  // bundle ids
-    public var border = true                // border on the focused window
-    public var borderWidth = 4.0
+    public var borderWidth = 4.0            // border on the focused window; 0 = no border
     public var borderRadius = 16.0          // corner radius of the windows the border wraps
     public var borderColor = "#808080"
     public var floatApps = ["System Settings", "Calculator", "Archive Utility", "App Store", "Activity Monitor", "Raycast"]

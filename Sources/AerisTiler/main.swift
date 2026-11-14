@@ -2,7 +2,8 @@
 //
 // Run with no arguments, it is the app (menu bar item, no Dock icon). Run with arguments, it is
 // the command line for the running app, so scripts and agents can do all that the GUI can:
-//   aeris-tiler <action>          any id from `aeris-tiler actions` (focus-left, snap-left-half, ...)
+//   aeris-tiler <action>          any id from `aeris-tiler actions` (focus-left, snap-left-half, ...);
+//                                 add `--window <id>` to act on that window, not the focused one
 //   aeris-tiler set <key> <value> layout tile|grid|float · preset swiss|columns|main|board · hard true|false
 //                                 (these three change the space under the mouse) · login true|false
 //   aeris-tiler query             JSON: screens, layouts, windows, frames
@@ -100,8 +101,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "quit":
             DispatchQueue.main.async { NSApp.terminate(nil) }
         default:
+            // `--window <id>` (ids come from `query`) acts on that window instead of the focused one.
+            if args.count == 2, args[0] == "--window" { wm.subject = UInt32(args[1]) }
             out["ok"] = run(cmd)
             if cmd.hasPrefix("resize-") { run(cmd, pressed: false) }   // a tap: three steps
+            wm.subject = nil
         }
         try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]).write(to: URL(fileURLWithPath: reply), options: .atomic)
     }
@@ -113,7 +117,7 @@ enum CLI {
     static func run(_ args: [String]) -> Int32 {
         switch args[0] {
         case "-h", "--help", "help":
-            print("usage: aeris-tiler <action> | set layout|preset|hard|login <value> | query | reload | actions | quit")
+            print("usage: aeris-tiler <action> [--window <id>] | set layout|preset|hard|login <value> | query | reload | actions | quit")
             return 0
         case "actions":
             let c = Config.load()

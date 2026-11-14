@@ -127,6 +127,7 @@ private struct Number: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
     var unit = "px"
+    var zero: String?   // what to show at 0, e.g. "None"
     private func cell(_ s: String, _ d: Double) -> some View {
         Button { value = min(max(value + d, range.lowerBound), range.upperBound) } label: {
             Text(s).font(.swiss(14)).frame(width: 26, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
@@ -136,7 +137,7 @@ private struct Number: View {
     var body: some View {
         HStack(spacing: -1) {
             cell("−", -1)
-            Text("\(Int(value)) \(unit)").font(.swiss(12, bold: true)).monospacedDigit().frame(width: 64, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
+            Text(value == 0 && zero != nil ? zero! : "\(Int(value)) \(unit)").font(.swiss(12, bold: true)).monospacedDigit().frame(width: 64, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
             cell("+", 1)
         }
     }
@@ -298,10 +299,9 @@ struct PrefsView: View {
             Row(title: "Copy on select", note: "Selecting text with the mouse copies it.") { Switch(on: $m.config.copyOnSelect) }
             Row(title: "Paste with right-click", note: "In the text field you type in. ⌥ + right-click opens the normal menu.") { Switch(on: $m.config.rightClickPaste) }
         case .border:
-            Row(title: "Border on the focused window") { Switch(on: $m.config.border) }
-            Row(title: "Width") { Number(value: $m.config.borderWidth, range: 1...16) }
+            Row(title: "Width", note: "The border marks the focused window. 0 is no border.") { Number(value: $m.config.borderWidth, range: 0...32, zero: "None") }
             Row(title: "Corner radius", note: "Match the corners of your windows.") { Number(value: $m.config.borderRadius, range: 0...40) }
-            Row(title: "Colour") {
+            Row(title: "Colour", note: "Pick a swatch, open the colour panel, or type a hex value.") {
                 HStack(spacing: 8) {
                     ForEach(["#000000", "#FFFFFF", "#808080", "#FF3B00"], id: \.self) { hex in
                         Button { m.config.borderColor = hex } label: {
@@ -310,6 +310,9 @@ struct PrefsView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    ColorPicker("", selection: Binding(get: { Color(nsColor: NSColor(hex: m.config.borderColor)) },
+                                                       set: { m.config.borderColor = NSColor($0).hex }), supportsOpacity: false)
+                        .labelsHidden().frame(width: 44, height: 26)
                     TextField("#808080", text: $m.config.borderColor).textFieldStyle(.plain).font(.swiss(12, bold: true))
                         .frame(width: 72, height: 26).padding(.horizontal, 8).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
                 }
