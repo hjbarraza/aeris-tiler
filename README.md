@@ -8,7 +8,7 @@ It works with System Integrity Protection (SIP) on and needs one permission: Acc
 
 ## Layouts
 
-Each space has its own layout. ⌘⌥← cycles them; the menu bar shows the current one.
+Each space has its own layout. ⌘⌥← cycles them; the menu bar icon shows the current one.
 
 | Layout | What it does |
 |---|---|
@@ -65,7 +65,7 @@ Then turn on **Aeris Tiler** in System Settings → Privacy & Security → Acces
 
 ## Preferences, menu bar, command line
 
-- **Menu bar**: the item shows the layout (TILE, SWISS, SWISS SOFT, FLOAT, PAUSED). Its menu has every action, the presets, and Preferences.
+- **Menu bar**: the icon is a small drawing of the current layout: solid windows for tile and a hard grid, outlines for a soft grid and float, dimmed while paused. Its menu has every action, the presets, and Preferences.
 - **Preferences**: gaps, padding, default layout and preset, mouse behaviour, border width (0 = none) and colour, shortcuts, floating apps, launch at login.
 - **Config file**: `~/.config/aeris-tiler/config.json`. Preferences writes it; after an edit by hand run `aeris-tiler reload`. Keys left out keep their default.
 - **Command line**: `aeris-tiler` talks to the running app, so scripts and agents can do all that the GUI can.

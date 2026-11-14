@@ -3,11 +3,34 @@
 import AppKit
 import TilerCore
 
-/// Black on white in light mode, white on black in dark mode: no tint, no grey surface.
+/// The look shared by the Keysheet, the preferences and the menu bar item.
+/// Colour: black on white in light mode, white on black in dark mode; no tint, no grey surface.
+/// Type: Helvetica Neue in three weights, with tracking set by size. Helvetica is drawn for text
+/// sizes, so large type is tightened and small type is opened a little. Bold is for display
+/// lines only; emphasis in text uses Medium.
 enum Theme {
+    enum Face: String { case regular = "HelveticaNeue", medium = "HelveticaNeue-Medium", bold = "HelveticaNeue-Bold" }
+
     static let background = NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .black : .white }
-    static func font(_ size: CGFloat, bold: Bool = false) -> NSFont {
-        NSFont(name: bold ? "HelveticaNeue-Bold" : "HelveticaNeue", size: size) ?? .systemFont(ofSize: size, weight: bold ? .bold : .regular)
+
+    static func font(_ size: CGFloat, _ face: Face = .regular) -> NSFont {
+        NSFont(name: face.rawValue, size: size) ?? .systemFont(ofSize: size, weight: face == .regular ? .regular : face == .medium ? .medium : .bold)
+    }
+
+    static func tracking(_ size: CGFloat) -> CGFloat {
+        switch size {
+        case 40...: return size * -0.03
+        case 24...: return size * -0.022
+        case 15...: return size * -0.012
+        case 13...: return 0
+        default: return size * 0.012
+        }
+    }
+
+    /// Text set in the type system. `caps` is the small label style: upper case, opened wide.
+    static func text(_ string: String, _ size: CGFloat, _ face: Face = .regular, color: NSColor = .labelColor, caps: Bool = false) -> NSAttributedString {
+        NSAttributedString(string: caps ? string.uppercased() : string,
+                           attributes: [.font: font(size, face), .kern: caps ? 1.5 : tracking(size), .foregroundColor: color])
     }
 }
 
@@ -26,9 +49,9 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
     private var all: [Entry] = [], rows: [Row] = []
     private let config: () -> Config
 
-    private static func label(_ text: String, _ font: NSFont, _ color: NSColor = .labelColor) -> NSTextField {
-        let l = NSTextField(labelWithString: text)
-        l.font = font; l.textColor = color; l.translatesAutoresizingMaskIntoConstraints = false
+    private static func label(_ text: NSAttributedString) -> NSTextField {
+        let l = NSTextField(labelWithAttributedString: text)
+        l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }
 
@@ -39,7 +62,7 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
 
     init(config: @escaping () -> Config) {
         self.config = config
-        count = Keysheet.label("", Theme.font(11), .secondaryLabelColor)
+        count = Keysheet.label(Theme.text("", 11))
         super.init()
         panel.titleVisibility = .hidden; panel.titlebarAppearsTransparent = true
         panel.isMovableByWindowBackground = true; panel.level = .floating
@@ -47,11 +70,10 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
         panel.delegate = self
         let bg = NSView(); panel.contentView = bg
 
-        let title = Keysheet.label("", Theme.font(11, bold: true))
-        title.attributedStringValue = NSAttributedString(string: "WINDOW SHORTCUTS",
-            attributes: [.kern: 1.2, .font: Theme.font(11, bold: true), .foregroundColor: NSColor.labelColor])
+        let title = Keysheet.label(Theme.text("Window shortcuts", 10, .medium, caps: true))
 
-        search.placeholderString = "Type to filter"; search.delegate = self
+        search.placeholderAttributedString = Theme.text("Type to filter", 24, color: .tertiaryLabelColor)
+        search.delegate = self
         search.font = Theme.font(24); search.isBordered = false; search.drawsBackground = false
         search.focusRingType = .none; search.translatesAutoresizingMaskIntoConstraints = false
         let rule = Keysheet.hairline()
@@ -65,7 +87,7 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
         let scroll = NSScrollView(); scroll.documentView = table; scroll.drawsBackground = false
         scroll.hasVerticalScroller = false; scroll.translatesAutoresizingMaskIntoConstraints = false
 
-        let hint = Keysheet.label("esc  close", Theme.font(11), .tertiaryLabelColor)
+        let hint = Keysheet.label(Theme.text("Esc  close", 10, .medium, color: .tertiaryLabelColor, caps: true))
         for v in [title, count, search, rule, scroll, hint] as [NSView] { bg.addSubview(v) }
         NSLayoutConstraint.activate([
             title.topAnchor.constraint(equalTo: bg.topAnchor, constant: margin),
@@ -116,7 +138,7 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
             if i > 0 && hits[i - 1].group != h.group { rows.append(.rule) }
             rows.append(.key(h))
         }
-        count.stringValue = String(format: "%02d / %02d", hits.count, all.count)
+        count.attributedStringValue = Theme.text(String(format: "%02d / %02d", hits.count, all.count), 11, color: .secondaryLabelColor)
         table.reloadData()
     }
 
@@ -145,9 +167,9 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
         }
         let l: NSTextField
         switch col?.identifier.rawValue {
-        case "keys": l = Keysheet.label(h.keys, Theme.font(13, bold: true))
-        case "name": l = Keysheet.label(h.name, Theme.font(14))
-        default:     l = Keysheet.label(h.spelled, Theme.font(12), .secondaryLabelColor)
+        case "keys": l = Keysheet.label(Theme.text(h.keys, 13, .medium))
+        case "name": l = Keysheet.label(Theme.text(h.name, 14))
+        default:     l = Keysheet.label(Theme.text(h.spelled, 12, color: .secondaryLabelColor))
         }
         cell.addSubview(l)
         NSLayoutConstraint.activate([l.centerYAnchor.constraint(equalTo: cell.centerYAnchor),

@@ -64,27 +64,23 @@ final class PrefsModel: ObservableObject {
 
 // MARK: - Type and colour
 
-/// The type system. One family, three weights, and tracking set by size: Helvetica is drawn
-/// for text sizes, so large type is tightened and small type is opened a little. Bold is kept
-/// for the two display lines; emphasis in text uses Medium.
-private enum Face: String { case regular = "HelveticaNeue", medium = "HelveticaNeue-Medium", bold = "HelveticaNeue-Bold" }
-
-private func swissTracking(_ size: CGFloat) -> CGFloat {
-    switch size {
-    case 40...: return size * -0.03
-    case 24...: return size * -0.022
-    case 15...: return size * -0.012
-    case 13...: return 0
-    default: return size * 0.012
-    }
-}
-
 private extension Font {
-    static func swiss(_ size: CGFloat, _ weight: Face = .regular) -> Font { .custom(weight.rawValue, fixedSize: size) }
+    static func swiss(_ size: CGFloat, _ face: Theme.Face = .regular) -> Font { .custom(face.rawValue, fixedSize: size) }
 }
 
 private extension View {
-    func swiss(_ size: CGFloat, _ weight: Face = .regular) -> some View { font(.swiss(size, weight)).tracking(swissTracking(size)) }
+    /// Text in the shared type system: see Theme.
+    func swiss(_ size: CGFloat, _ face: Theme.Face = .regular) -> some View { font(.swiss(size, face)).tracking(Theme.tracking(size)) }
+}
+
+/// Controls have slightly rounded corners; rules and the layout stay square.
+private let box = RoundedRectangle(cornerRadius: 4, style: .continuous)
+
+private extension View {
+    /// The outline of a control.
+    func outlined(_ width: CGFloat = 1) -> some View { overlay(box.strokeBorder(Color.primary, lineWidth: width)) }
+    /// Several cells joined into one control: square inside, rounded outside.
+    func joined() -> some View { clipShape(box).outlined() }
 }
 
 private let ink = Color.primary
@@ -109,8 +105,8 @@ private struct Switch: View {
     var body: some View {
         Button { on.toggle() } label: {
             ZStack(alignment: on ? .trailing : .leading) {
-                Rectangle().fill(on ? ink : .clear).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
-                Rectangle().fill(on ? paper : ink).frame(width: 12, height: 12).padding(3)
+                box.fill(on ? ink : .clear).outlined()
+                RoundedRectangle(cornerRadius: 2, style: .continuous).fill(on ? paper : ink).frame(width: 12, height: 12).padding(3)
             }
             .frame(width: 36, height: 18)
             .contentShape(Rectangle())
@@ -138,6 +134,7 @@ private struct Choice<T: Hashable>: View {
                 .buttonStyle(.plain)
             }
         }
+        .joined()
     }
 }
 
@@ -159,6 +156,7 @@ private struct Number: View {
             Text(value == 0 && zero != nil ? zero! : "\(Int(value)) \(unit)").swiss(12, .medium).monospacedDigit().frame(width: 64, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
             cell("+", 1)
         }
+        .joined()
     }
 }
 
@@ -175,7 +173,8 @@ private struct Diagram: View {
         }
         .frame(width: 72, height: 46).padding(6)
         .background(selected ? ink : .clear)
-        .overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
+        .clipShape(box)
+        .outlined()
     }
 }
 
@@ -201,17 +200,10 @@ private struct DiagramChoice<T: Hashable>: View {
 
 private let unit = CGRect(x: 0, y: 0, width: 1, height: 1)
 
-/// The frames a preset gives `n` windows, in a unit square.
-private func presetFrames(_ p: Preset, _ n: Int) -> [CGRect] {
-    let ids = (1...n).map { WindowID($0) }
-    return Array(Tree(p, windows: ids, in: CGRect(x: 0, y: 0, width: 1000, height: 1000), gap: 0).frames(in: CGRect(x: 0, y: 0, width: 1000, height: 1000), gap: 0).values)
-        .map { CGRect(x: $0.minX / 1000, y: $0.minY / 1000, width: $0.width / 1000, height: $0.height / 1000) }
-}
-
 private let layoutDiagrams: [(TilerCore.Layout, String, [CGRect])] = [
-    (.tile, "Tile", [CGRect(x: 0, y: 0, width: 0.5, height: 1), CGRect(x: 0.5, y: 0, width: 0.5, height: 0.5), CGRect(x: 0.5, y: 0.5, width: 0.25, height: 0.5), CGRect(x: 0.75, y: 0.5, width: 0.25, height: 0.5)]),
+    (.tile, "Tile", tileFrames),
     (.grid, "Grid", presetFrames(.swiss, 5)),
-    (.float, "Float", [CGRect(x: 0.06, y: 0.1, width: 0.5, height: 0.6), CGRect(x: 0.4, y: 0.32, width: 0.52, height: 0.58)]),
+    (.float, "Float", floatFrames),
 ]
 
 // MARK: - Rows
@@ -330,17 +322,17 @@ struct PrefsView: View {
                 HStack(spacing: 8) {
                     ForEach(["#000000", "#FFFFFF", "#808080", "#FF3B00"], id: \.self) { hex in
                         Button { m.config.borderColor = hex } label: {
-                            Rectangle().fill(Color(nsColor: NSColor(hex: hex))).frame(width: 26, height: 26)
-                                .overlay(Rectangle().strokeBorder(ink, lineWidth: m.config.borderColor.uppercased() == hex ? 3 : 1))
+                            box.fill(Color(nsColor: NSColor(hex: hex))).frame(width: 26, height: 26)
+                                .outlined(m.config.borderColor.uppercased() == hex ? 3 : 1)
                         }
                         .buttonStyle(.plain)
                     }
                     Button { ColorPanel.shared.open(NSColor(hex: m.config.borderColor)) { m.config.borderColor = $0.hex } } label: {
-                        Text("+").swiss(15).frame(width: 26, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
+                        Text("+").swiss(15).frame(width: 26, height: 26).outlined().contentShape(Rectangle())
                     }
                     .buttonStyle(.plain).help("More colours")
                     TextField("#808080", text: $m.config.borderColor).textFieldStyle(.plain).swiss(12, .medium)
-                        .frame(width: 72, height: 26).padding(.horizontal, 8).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
+                        .frame(width: 72, height: 26).padding(.horizontal, 8).outlined()
                 }
             }
         case .shortcuts:
@@ -357,8 +349,8 @@ struct PrefsView: View {
                                 let rec = m.recording == a.id
                                 Text(rec ? "Press keys" : m.config.combo(a.id)?.parts.joined(separator: " ") ?? "—")
                                     .swiss(12, .medium).foregroundStyle(rec ? paper : ink)
-                                    .frame(width: 120, height: 24).background(rec ? ink : .clear)
-                                    .overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
+                                    .frame(width: 120, height: 24).background(rec ? ink : .clear).clipShape(box)
+                                    .outlined().contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
@@ -371,7 +363,7 @@ struct PrefsView: View {
                 Text("Click a key field, then press the new keys. Delete clears it, Esc cancels.").swiss(12).foregroundStyle(ink.opacity(0.55))
                 Spacer()
                 Button { m.stopRecording(); m.config.bindings = Config().bindings } label: {
-                    Text("Reset all").swiss(12, .medium).padding(.horizontal, 12).frame(height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
+                    Text("Reset all").swiss(12, .medium).padding(.horizontal, 12).frame(height: 26).outlined().contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -395,12 +387,13 @@ private struct AppsList: View {
         Row(title: "Floating apps", note: "Windows of these apps are never tiled. Use the name the menu bar shows.") {
             HStack(spacing: -1) {
                 TextField("App name", text: $name).textFieldStyle(.plain).swiss(12).onSubmit(add)
-                    .frame(width: 180, height: 26).padding(.horizontal, 8).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
+                    .frame(width: 180, height: 26).padding(.horizontal, 8)
                 Button(action: add) {
                     Text("Add").swiss(12, .medium).foregroundStyle(paper).padding(.horizontal, 14).frame(height: 26).background(ink).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
+            .joined()
         }
         ForEach(apps, id: \.self) { app in
             VStack(spacing: 0) {
