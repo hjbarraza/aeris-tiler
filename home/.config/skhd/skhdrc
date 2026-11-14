@@ -1,0 +1,46 @@
+# AERIS hotkeys, ported from the AerisOS (Linux) hyprland.lua (Mac mode: wm = ctrl + alt).
+
+# Focus window (Hyprland: wm + arrows)
+ctrl + alt - left  : yabai -m window --focus west || $HOME/.local/bin/grid focus west
+ctrl + alt - right : yabai -m window --focus east || $HOME/.local/bin/grid focus east
+ctrl + alt - up    : yabai -m window --focus north || $HOME/.local/bin/grid focus north
+ctrl + alt - down  : yabai -m window --focus south || $HOME/.local/bin/grid focus south
+
+# Move window (Hyprland: wm + shift + arrows)
+ctrl + alt + shift - left  : yabai -m window --swap west || $HOME/.local/bin/grid swap west
+ctrl + alt + shift - right : yabai -m window --swap east || $HOME/.local/bin/grid swap east
+ctrl + alt + shift - up    : yabai -m window --swap north || $HOME/.local/bin/grid swap north
+ctrl + alt + shift - down  : yabai -m window --swap south || $HOME/.local/bin/grid swap south
+
+# Resize is done by Hammerspoon (~/.hammerspoon/init.lua), which sees the key release; skhd only
+# lists the keys for the cheat sheet and passes them through (->).
+# Resize (Hyprland: super + ctrl + arrows; hold to keep resizing)
+cmd + ctrl - left  -> : true
+cmd + ctrl - right -> : true
+cmd + ctrl - up    -> : true
+cmd + ctrl - down  -> : true
+
+# Flip split rows / columns (Hyprland: wm + J)
+ctrl + alt - j : yabai -m window --toggle split
+
+# Maximize (Hyprland Mac mode: ctrl + alt + Return)
+ctrl + alt - return : [ "$(yabai -m query --windows --window | jq '."is-floating"')" = true ] \
+    && yabai -m window --grid 1:1:0:0:1:1 \
+    || yabai -m window --toggle zoom-fullscreen
+
+# Float / unfloat (Hyprland: super + alt + F)
+cmd + alt - f : yabai -m window --toggle float --grid 6:6:1:1:4:4
+
+# Hide / show top bar (Hyprland: super + shift + space)
+cmd + shift - space : command -v sketchybar >/dev/null && { [ "$(sketchybar --query bar | jq -r .hidden)" = off ] \
+    && { sketchybar --bar hidden=on;  yabai -m config external_bar all:0:0; } \
+    || { sketchybar --bar hidden=off; yabai -m config external_bar all:26:0; }; }
+
+# Shortcut cheat sheet (Keysheet)
+cmd - k : open -a ~/Applications/Keysheet.app
+
+# Move window to other display
+ctrl + alt - m : yabai -m window --display next || yabai -m window --display first
+
+# Cycle layout: tile, grid, float
+ctrl + alt - l : $HOME/.local/bin/layout next
