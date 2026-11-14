@@ -1,0 +1,12 @@
+#!/bin/bash
+# Border on the focused window only; other windows get no visible border (alpha 1 of 255).
+options=(
+	style=round
+	width=6.0
+	hidpi=off
+	ax_focus=on
+	active_color=0xff808080
+	inactive_color=0x01000000
+)
+
+borders "${options[@]}"

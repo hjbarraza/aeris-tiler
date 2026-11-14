@@ -31,7 +31,7 @@ for i in $(yabai -m query --spaces | jq '.[].index'); do
                            fi'
 done
 
-# ---- left: layout of the focused space (TILE / GRID / FLOAT / FULL). Click cycles it, like ⌃⌥L.
+# ---- left: layout of the focused space (TILE / GRID / FLOAT / FULL). Click cycles it, like ⌘⌥←.
 sketchybar --add event layout_change \
            --add item layout left \
            --set layout icon.drawing=off label.color=$DIM padding_left=10 \

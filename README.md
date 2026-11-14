@@ -4,11 +4,11 @@
 
 Hyprland-style tiling for macOS, built on open-source tools: yabai tiles, skhd and Hammerspoon handle the keys, sketchybar is an optional top bar. Ported from AerisOS, a Hyprland desktop on Linux.
 
-It works with System Integrity Protection (SIP) on. Hotkey space switching and window animations need SIP off, so they are not included.
+It works with System Integrity Protection (SIP) on. Window animations need SIP off, so they are not included. Switching spaces uses macOS's own keys: ⌃← / ⌃→ and ⌃1–9.
 
 ## Layouts
 
-Each space has one of three layouts. ⌃⌥L cycles them; the bar shows the current one.
+Each space has one of three layouts. ⌘⌥← cycles them; the bar shows the current one.
 
 | Layout | Command | What it does |
 |---|---|---|
@@ -21,14 +21,16 @@ Each space has one of three layouts. ⌃⌥L cycles them; the bar shows the curr
 | Keys | Action |
 |---|---|
 | ⌃⌥ ← → ↑ ↓ | Focus the window in that direction |
-| ⌃⌥⇧ ← → ↑ ↓ | Swap with the window in that direction |
+| ⌃⌥⌘ ← → ↑ ↓ | Swap with the window in that direction |
 | ⌘⌃ ← → ↑ ↓ | Resize: hold to keep resizing, tap for 60 px. The border moves in the arrow's direction; neighbours follow in TILE. |
 | ⌃⌥J | Flip the split between rows and columns |
-| ⌃⌥↩ | Maximize (keeps the window in the layout, unlike the green button) |
-| ⌘⌥F | Float / unfloat the window |
-| ⌃⌥M | Move the window to the other display |
-| ⌃⌥L | Cycle layout: tile → grid → float |
+| ⌘⌥↑ | Maximize (keeps the window in the layout, unlike the green button) |
+| ⌘⌥↓ | Float / unfloat the window |
+| ⌘⌥→ | Move the window to the other display |
+| ⌘⌥← | Cycle layout: tile → grid → float |
 | ⌘⇧Space | Hide / show the bar (sketchybar) |
+| ⌃← / ⌃→ | Switch space (native macOS) |
+| ⌃⌥⌘ 1–9 | Move the window to space 1–9 |
 | ⌘K | Keysheet: a searchable list of these keys |
 
 Mouse: ⌃ + drag moves a window, ⌃ + right-drag resizes it. Focus follows the mouse. New windows open on the display under the mouse.

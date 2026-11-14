@@ -3,7 +3,7 @@
 # aeris:group=desktop
 # aeris:args=[next]
 # Cycle order: tile → grid → float → tile, through the `tile`, `grid` and `floating` commands.
-# The bar's layout label and the ⌃⌥L hotkey both use this.
+# The bar's layout label and the ⌘⌥← hotkey both use this.
 
 set -euo pipefail
 

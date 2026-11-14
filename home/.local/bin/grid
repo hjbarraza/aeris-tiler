@@ -75,8 +75,9 @@ neighbor() {
 
 case ${1:-} in
   swap|focus)
-    # Only on a gridded space; elsewhere yabai's own command already did the job (or failed honestly)
-    grep -qx -- "$space" "$state" || exit 1
+    # Focus works on any space: float windows have no yabai neighbours, so pick the nearest by position.
+    # Swap is grid-only; elsewhere yabai's own command already did the job (or failed honestly).
+    if [[ $1 == swap ]]; then grep -qx -- "$space" "$state" || exit 1; fi
     other=$(neighbor "${2:?direction}")
     [[ -n $other ]] || exit 1
     if [[ $1 == "focus" ]]; then

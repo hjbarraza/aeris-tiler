@@ -59,14 +59,16 @@ eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shell
 | Default shortcut | Action |
 |---|---|
 | ⌃⌥ + arrows | Focus a window |
-| ⌃⌥⇧ + arrows | Swap windows |
+| ⌃⌥⌘ + arrows | Swap windows |
 | ⌘⌃ + arrows (hold) | Resize: the window's border moves in the arrow's direction |
-| ⌃⌥L | Cycle layout: tile → grid → float |
+| ⌘⌥← | Cycle layout: tile → grid → float |
 | ⌃⌥J | Flip the split between rows and columns |
-| ⌃⌥↩ | Maximize |
-| ⌘⌥F | Float / unfloat |
-| ⌃⌥M | Move window to the other display |
+| ⌘⌥↑ | Maximize |
+| ⌘⌥↓ | Float / unfloat |
+| ⌘⌥→ | Move window to the other display |
 | ⌘⇧Space | Hide / show the top bar (needs sketchybar) |
+| ⌃← / ⌃→ | Switch space (native macOS) |
+| ⌃⌥⌘ 1–9 | Move window to space 1–9 |
 | ⌘K | Cheat sheet |
 
 ## 3. Install the tools
@@ -145,7 +147,7 @@ pgrep -x skhd >/dev/null && echo "skhd running"
 
 Then ask the user to try, with two or three windows open:
 
-1. ⌃⌥L: the layout changes (tile → grid → float); with sketchybar, the label in the bar changes too.
+1. ⌘⌥←: the layout changes (tile → grid → float); with sketchybar, the label in the bar changes too.
 2. In TILE, hold ⌘⌃→: the border between two windows moves right and both windows change size. (On the rightmost window, → shrinks it from the left; that is the border moving right.)
 3. ⌘K: the cheat sheet opens.
 
@@ -155,7 +157,7 @@ If a key does nothing, the usual cause is a missing Accessibility permission: go
 
 Every shortcut can be changed.
 
-- **Most shortcuts** live in `~/.config/skhd/skhdrc`, one per line: `ctrl + alt - l : $HOME/.local/bin/layout next`. Edit the left side, save, then run `skhd --reload`. The cheat sheet reads this file, so it updates too.
+- **Most shortcuts** live in `~/.config/skhd/skhdrc`, one per line: `cmd + alt - left : $HOME/.local/bin/layout next`. Edit the left side, save, then run `skhd --reload`. The cheat sheet reads this file, so it updates too.
 - **To free ⌘K**, delete or change the `cmd - k` line in `skhdrc`, then `skhd --reload`.
 - **Resize** lives in `~/.hammerspoon/init.lua`, in the line `hs.hotkey.bind({ "cmd", "ctrl" }, dir, ...)`. Change `{ "cmd", "ctrl" }`, then reload Hammerspoon from its menu. Also update the four `-> : true` lines in `skhdrc` so the cheat sheet shows the new keys.
 - Avoid combinations macOS already uses (⌘Space, ⌃↑, ⌃←/→ for Spaces, unless the user turned those off in System Settings → Keyboard → Keyboard Shortcuts).
