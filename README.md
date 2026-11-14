@@ -1,5 +1,7 @@
 # aeris-tiler
 
+![aeris-tiler: Hyprland-style tiling for macOS](assets/banner.png)
+
 Hyprland-style tiling for macOS, built on open-source tools: yabai tiles, skhd and Hammerspoon handle the keys, sketchybar is an optional top bar. Ported from AerisOS, a Hyprland desktop on Linux.
 
 It works with System Integrity Protection (SIP) on. Hotkey space switching and window animations need SIP off, so they are not included.
@@ -66,6 +68,7 @@ Hammerspoon also adds a Linux-style clipboard: selecting text copies it, right-c
 | `home/.config/sketchybar/sketchybarrc` | Optional top bar: spaces, layout, Tailscale, network, volume, battery, clock. |
 | `home/.warp/settings.toml` | Warp terminal settings. |
 | `keysheet/` | ⌘K cheat sheet, built by `install.sh` into `~/Applications/Keysheet.app`. |
+| `assets/` | Banner: `banner.svg` (source, uses the Söhne typeface), `banner.png`, and `banner-social.png` at 1280 × 640 for the GitHub social preview. |
 | `resize-matrix.py` | Test: resizes every window on the current space in every direction and layout, and checks the result. About 3 min; keep hands off the mouse and keyboard. |
 
 ## Tools
