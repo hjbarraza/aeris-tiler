@@ -67,6 +67,7 @@ Then turn on **Aeris Tiler** in System Settings → Privacy & Security → Acces
 
 - **Menu bar**: the icon is a small drawing of the current layout: solid windows for tile and a hard grid, outlines for a soft grid and float, dimmed while paused. Its menu has every action, the presets, and Preferences.
 - **Preferences**: gaps, padding, default layout and preset, mouse behaviour, border width (0 = none) and colour, shortcuts, floating apps, launch at login.
+- **Languages**: English, Spanish, French and German. The app follows the system language; Preferences → General can set one. Translations live in `Sources/TilerCore/Strings.swift`, one row per text.
 - **Config file**: `~/.config/aeris-tiler/config.json`. Preferences writes it; after an edit by hand run `aeris-tiler reload`. Keys left out keep their default.
 - **Command line**: `aeris-tiler` talks to the running app, so scripts and agents can do all that the GUI can.
 

@@ -46,6 +46,7 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
                                styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel], backing: .buffered, defer: false)
     private let search = NSTextField(), table = NSTableView()
     private let count: NSTextField
+    private let title = NSTextField(labelWithString: ""), hint = NSTextField(labelWithString: "")
     private var all: [Entry] = [], rows: [Row] = []
     private let config: () -> Config
 
@@ -70,9 +71,8 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
         panel.delegate = self
         let bg = NSView(); panel.contentView = bg
 
-        let title = Keysheet.label(Theme.text("Window shortcuts", 10, .medium, caps: true))
+        title.translatesAutoresizingMaskIntoConstraints = false
 
-        search.placeholderAttributedString = Theme.text("Type to filter", 24, color: .tertiaryLabelColor)
         search.delegate = self
         search.font = Theme.font(24); search.isBordered = false; search.drawsBackground = false
         search.focusRingType = .none; search.translatesAutoresizingMaskIntoConstraints = false
@@ -87,7 +87,7 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
         let scroll = NSScrollView(); scroll.documentView = table; scroll.drawsBackground = false
         scroll.hasVerticalScroller = false; scroll.translatesAutoresizingMaskIntoConstraints = false
 
-        let hint = Keysheet.label(Theme.text("Esc  close", 10, .medium, color: .tertiaryLabelColor, caps: true))
+        hint.translatesAutoresizingMaskIntoConstraints = false
         for v in [title, count, search, rule, scroll, hint] as [NSView] { bg.addSubview(v) }
         NSLayoutConstraint.activate([
             title.topAnchor.constraint(equalTo: bg.topAnchor, constant: margin),
@@ -114,12 +114,16 @@ final class Keysheet: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTable
 
     func show() {
         let c = config()
+        // Set the fixed texts on every show, so a language change takes effect at once.
+        title.attributedStringValue = Theme.text(L("Window shortcuts"), 10, .medium, caps: true)
+        hint.attributedStringValue = Theme.text(L("Esc  close"), 10, .medium, color: .tertiaryLabelColor, caps: true)
+        search.placeholderAttributedString = Theme.text(L("Type to filter"), 24, color: .tertiaryLabelColor)
         all = Action.all.compactMap { a in
-            c.combo(a.id).map { Entry(keys: $0.parts.joined(separator: " "), name: a.title, spelled: $0.spelled, group: a.group) }
+            c.combo(a.id).map { Entry(keys: $0.parts.joined(separator: " "), name: L(a.title), spelled: $0.spelled, group: a.group) }
         } + [
-            Entry(keys: "⌃ ←  ⌃ →", name: "Switch space (macOS)", spelled: "Ctrl + Left / Right", group: "macOS"),
-            Entry(keys: "⌃ drag", name: "Move window", spelled: "Ctrl + drag", group: "Mouse"),
-            Entry(keys: "⌃ right-drag", name: "Resize window", spelled: "Ctrl + right-drag", group: "Mouse"),
+            Entry(keys: "⌃ ←  ⌃ →", name: L("Switch space (macOS)"), spelled: "Ctrl + \(L("Left")) / \(L("Right"))", group: "macOS"),
+            Entry(keys: "⌃ \(L("drag"))", name: L("Move window"), spelled: "Ctrl + \(L("drag"))", group: "Mouse"),
+            Entry(keys: "⌃ \(L("right-drag"))", name: L("Resize window"), spelled: "Ctrl + \(L("right-drag"))", group: "Mouse"),
         ]
         search.stringValue = ""; filter()
         // Centre on the screen under the mouse.

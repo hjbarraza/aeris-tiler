@@ -89,7 +89,7 @@ private let paper = Color(nsColor: Theme.background)
 /// Small capitals label: the section marks of the layout.
 private struct Caps: View {
     let text: String
-    var body: some View { Text(text.uppercased()).font(.swiss(10, .medium)).tracking(1.5) }
+    var body: some View { Text(L(text).uppercased()).font(.swiss(10, .medium)).tracking(1.5) }
 }
 
 private struct Hairline: View {
@@ -124,7 +124,7 @@ private struct Choice<T: Hashable>: View {
         HStack(spacing: -1) {
             ForEach(options, id: \.0) { o in
                 Button { value = o.0 } label: {
-                    Text(o.1).swiss(12, value == o.0 ? .medium : .regular)
+                    Text(L(o.1)).swiss(12, value == o.0 ? .medium : .regular)
                         .foregroundStyle(value == o.0 ? paper : ink)
                         .padding(.horizontal, 12).frame(height: 26)
                         .background(value == o.0 ? ink : .clear)
@@ -153,7 +153,7 @@ private struct Number: View {
     var body: some View {
         HStack(spacing: -1) {
             cell("−", -1)
-            Text(value == 0 && zero != nil ? zero! : "\(Int(value)) \(unit)").swiss(12, .medium).monospacedDigit().frame(width: 64, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
+            Text(value == 0 && zero != nil ? L(zero!) : "\(Int(value)) \(unit)").swiss(12, .medium).monospacedDigit().frame(width: 64, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
             cell("+", 1)
         }
         .joined()
@@ -188,7 +188,7 @@ private struct DiagramChoice<T: Hashable>: View {
                 Button { value = o.0 } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         Diagram(frames: o.2, selected: value == o.0)
-                        Text(o.1).swiss(11, value == o.0 ? .medium : .regular)
+                        Text(L(o.1)).swiss(11, value == o.0 ? .medium : .regular)
                     }
                     .contentShape(Rectangle())
                 }
@@ -216,8 +216,8 @@ private struct Row<Control: View>: View {
     @ViewBuilder let control: Control
     var body: some View {
         let text = VStack(alignment: .leading, spacing: 4) {
-            Text(title).swiss(13, .medium)
-            if let note { Text(note).swiss(12).lineSpacing(3).foregroundStyle(ink.opacity(0.55)).fixedSize(horizontal: false, vertical: true)
+            Text(L(title)).swiss(13, .medium)
+            if let note { Text(L(note)).swiss(12).lineSpacing(3).foregroundStyle(ink.opacity(0.55)).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 440, alignment: .leading) }   // a measure of about 70 characters
         }
         VStack(spacing: 0) {
@@ -248,7 +248,7 @@ struct PrefsView: View {
                 let n = PrefsModel.Section.allCases.firstIndex(of: m.section)! + 1
                 Caps(text: String(format: "%02d", n)).foregroundStyle(ink.opacity(0.5)).padding(.bottom, 2)
                 // Large glyphs carry side bearing: pull the line left so its stem meets the rule.
-                Text(m.section.rawValue).swiss(48, .bold).offset(x: -2.5)
+                Text(L(m.section.rawValue)).swiss(48, .bold).offset(x: -2.5)
                 Hairline(weight: 2).padding(.top, 12)
                 ScrollView { VStack(spacing: 0) { content }.padding(.bottom, 24) }.scrollIndicators(.never)
             }
@@ -257,6 +257,7 @@ struct PrefsView: View {
         .frame(width: 900, height: 640)
         .background(paper)
         .foregroundStyle(ink)
+        .id(m.config.language)   // texts come from L(): draw everything again when the language changes
     }
 
     private var sidebar: some View {
@@ -270,7 +271,7 @@ struct PrefsView: View {
                 Button { m.stopRecording(); m.section = s } label: {
                     HStack(spacing: 12) {
                         Text(String(format: "%02d", i + 1)).swiss(11).monospacedDigit().foregroundStyle(ink.opacity(0.5))
-                        Text(s.rawValue).swiss(14, m.section == s ? .medium : .regular)
+                        Text(L(s.rawValue)).swiss(14, m.section == s ? .medium : .regular)
                         Spacer()
                         if m.section == s { Rectangle().fill(ink).frame(width: 8, height: 8) }
                     }
@@ -294,6 +295,9 @@ struct PrefsView: View {
     @ViewBuilder private var content: some View {
         switch m.section {
         case .general:
+            Row(title: "Language") {
+                Choice(options: [("system", "System")] + Lang.allCases.map { ($0.rawValue, $0.rawValue.uppercased()) }, value: $m.config.language)
+            }
             Row(title: "Launch at login") { Switch(on: Binding(get: { m.loginItem }, set: m.setLoginItem)) }
             Row(title: "Layout of a new space", note: "Each space keeps its own layout after that.") {
                 DiagramChoice(options: layoutDiagrams, value: $m.config.defaultLayout)
@@ -330,7 +334,7 @@ struct PrefsView: View {
                     Button { ColorPanel.shared.open(NSColor(hex: m.config.borderColor)) { m.config.borderColor = $0.hex } } label: {
                         Text("+").swiss(15).frame(width: 26, height: 26).outlined().contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain).help("More colours")
+                    .buttonStyle(.plain).help(L("More colours"))
                     TextField("#808080", text: $m.config.borderColor).textFieldStyle(.plain).swiss(12, .medium)
                         .frame(width: 72, height: 26).padding(.horizontal, 8).outlined()
                 }
@@ -343,11 +347,11 @@ struct PrefsView: View {
                 ForEach(groups[g]!, id: \.id) { a in
                     VStack(spacing: 0) {
                         HStack {
-                            Text(a.title).swiss(13)
+                            Text(L(a.title)).swiss(13)
                             Spacer()
                             Button { m.recording == a.id ? m.stopRecording() : m.record(a.id) } label: {
                                 let rec = m.recording == a.id
-                                Text(rec ? "Press keys" : m.config.combo(a.id)?.parts.joined(separator: " ") ?? "—")
+                                Text(rec ? L("Press keys") : m.config.combo(a.id)?.parts.joined(separator: " ") ?? "—")
                                     .swiss(12, .medium).foregroundStyle(rec ? paper : ink)
                                     .frame(width: 120, height: 24).background(rec ? ink : .clear).clipShape(box)
                                     .outlined().contentShape(Rectangle())
@@ -360,10 +364,10 @@ struct PrefsView: View {
                 }
             }
             HStack {
-                Text("Click a key field, then press the new keys. Delete clears it, Esc cancels.").swiss(12).foregroundStyle(ink.opacity(0.55))
+                Text(L("Click a key field, then press the new keys. Delete clears it, Esc cancels.")).swiss(12).foregroundStyle(ink.opacity(0.55))
                 Spacer()
                 Button { m.stopRecording(); m.config.bindings = Config().bindings } label: {
-                    Text("Reset all").swiss(12, .medium).padding(.horizontal, 12).frame(height: 26).outlined().contentShape(Rectangle())
+                    Text(L("Reset all")).swiss(12, .medium).padding(.horizontal, 12).frame(height: 26).outlined().contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -386,10 +390,10 @@ private struct AppsList: View {
     var body: some View {
         Row(title: "Floating apps", note: "Windows of these apps are never tiled. Use the name the menu bar shows.") {
             HStack(spacing: -1) {
-                TextField("App name", text: $name).textFieldStyle(.plain).swiss(12).onSubmit(add)
+                TextField(L("App name"), text: $name).textFieldStyle(.plain).swiss(12).onSubmit(add)
                     .frame(width: 180, height: 26).padding(.horizontal, 8)
                 Button(action: add) {
-                    Text("Add").swiss(12, .medium).foregroundStyle(paper).padding(.horizontal, 14).frame(height: 26).background(ink).contentShape(Rectangle())
+                    Text(L("Add")).swiss(12, .medium).foregroundStyle(paper).padding(.horizontal, 14).frame(height: 26).background(ink).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -400,7 +404,7 @@ private struct AppsList: View {
                 HStack {
                     Text(app).swiss(13)
                     Spacer()
-                    Button { apps.removeAll { $0 == app } } label: { Text("Remove").swiss(12).underline().contentShape(Rectangle()) }.buttonStyle(.plain)
+                    Button { apps.removeAll { $0 == app } } label: { Text(L("Remove")).swiss(12).underline().contentShape(Rectangle()) }.buttonStyle(.plain)
                 }
                 .padding(.vertical, 9)
                 Hairline()

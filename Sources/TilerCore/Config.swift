@@ -46,7 +46,7 @@ public struct KeyCombo: Equatable {
     /// "⌃⌥←"
     public var symbols: String { parts.joined() }
     /// "Ctrl + Option + Left"
-    public var spelled: String { (mods.map { KeyCombo.modNames[$0]! } + [key.capitalized]).joined(separator: " + ") }
+    public var spelled: String { (mods.map { KeyCombo.modNames[$0]! } + [key.capitalized]).map(L).joined(separator: " + ") }
 }
 
 // MARK: - Actions: everything a hotkey, the menu or the command line can run
@@ -93,6 +93,7 @@ public struct Action {
 public enum FocusMode: String, Codable, CaseIterable { case off, focus, raise }
 
 public struct Config: Codable, Equatable {
+    public var language = "system"          // "system", or one of en, es, fr, de
     public var gap = 8.0                    // gutter between windows
     public var padding = 8.0                // space to the screen edge
     public var defaultLayout = Layout.tile  // layout of a space seen for the first time

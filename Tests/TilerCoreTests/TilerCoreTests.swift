@@ -170,4 +170,26 @@ final class TilerCoreTests: XCTestCase {
         XCTAssertEqual(c.bindings["focus-left"], "ctrl+alt-left")
         XCTAssertEqual(try Config.decode(JSONEncoder().encode(c)), c)
     }
+
+    func testTranslations() {
+        defer { Strings.language = .en }
+        // Every row has one text per language besides English, none empty.
+        for k in translationKeys {
+            XCTAssertEqual(translationRow(k)!.count, Lang.allCases.count - 1, k)
+            XCTAssertFalse(translationRow(k)!.contains(""), k)
+        }
+        // Every action title, group and snap position has a translation.
+        Strings.language = .de
+        for a in Action.all where a.group != "App" && a.group != "Snap" { XCTAssertNotEqual(L(a.title), a.title, a.title) }
+        for s in Snap.allCases { XCTAssertNotNil(translationRow(s.title), s.title) }
+        XCTAssertEqual(L("Snap: left half"), "Einrasten: Linke Hälfte")
+        XCTAssertEqual(L("Move window to space 3"), "Fenster auf Space 3 bewegen")
+        XCTAssertEqual(KeyCombo("ctrl+alt-left")!.spelled, "Ctrl + Wahl + Links")
+        Strings.language = .es
+        XCTAssertEqual(L("Gap"), "Separación")
+        XCTAssertEqual(L("not in the table"), "not in the table")
+        Strings.language = .en
+        XCTAssertEqual(L("Gap"), "Gap")
+        XCTAssertEqual(Lang.resolve("fr"), .fr)
+    }
 }

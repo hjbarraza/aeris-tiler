@@ -28,10 +28,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let id = Bundle.main.bundleIdentifier, NSRunningApplication.runningApplications(withBundleIdentifier: id).count > 1 {
             exit(CLI.run(["preferences"]))
         }
+        Strings.language = Lang.resolve(wm.config.language)
         mouse = MouseTap(wm)
         keysheet = Keysheet { [wm] in wm.config }
         status = StatusMenu(wm) { [unowned self] in self.run($0) }
         prefs = PrefsWindow(PrefsModel(wm.config) { [unowned self] c in
+            Strings.language = Lang.resolve(c.language)
             self.wm.setConfig(c)
             if self.prefs.model.recording == nil { Hotkeys.shared.register(c.bindings) }
         }) { [unowned self] in self.status.text }
@@ -79,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             out = wm.query()
         case "reload":
             wm.config = Config.load()
+            Strings.language = Lang.resolve(wm.config.language)
             prefs.model.config = wm.config
             Hotkeys.shared.register(wm.config.bindings)
             wm.reconcile(force: true)

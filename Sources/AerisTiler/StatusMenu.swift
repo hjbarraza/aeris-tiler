@@ -27,11 +27,13 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     /// The state in words: TILE, FLOAT or the grid preset (SWISS, SWISS SOFT); PAUSED; or a
     /// prompt while Accessibility is not granted. Shown as the tooltip and in the preferences.
     var text: String {
-        var text = "FULL"
-        if let st = wm.current?.state { text = st.layout == .grid ? st.preset.label + (st.hard ? "" : " SOFT") : st.layout.label }
-        if wm.paused { text = "PAUSED" }
-        if !AXIsProcessTrusted() { text = "AERIS: NO ACCESS" }
-        return text
+        var text = L("Full")
+        if let st = wm.current?.state {
+            text = st.layout == .grid ? L(st.preset.rawValue.capitalized) + (st.hard ? "" : " " + L("Soft")) : L(st.layout.rawValue.capitalized)
+        }
+        if wm.paused { text = L("Paused") }
+        if !AXIsProcessTrusted() { text = "Aeris: " + L("No access") }
+        return text.uppercased()
     }
 
     /// The menu bar shows the arrangement itself: a small drawing of the current layout.
@@ -71,7 +73,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     private func add(_ menu: NSMenu, _ title: String, action id: String? = nil, checked: Bool = false, _ work: (() -> Void)? = nil) {
-        let i = Item(title: title, action: #selector(Item.fire), keyEquivalent: "")
+        let i = Item(title: L(title), action: #selector(Item.fire), keyEquivalent: "")
         i.target = i
         i.work = work ?? { [run] in if let id { run(id) } }
         i.state = checked ? .on : .off
@@ -104,7 +106,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         add(menu, "Next Layout", action: "cycle-layout")
         menu.addItem(.separator())
         for p in Preset.allCases {
-            add(menu, "Grid: \(p.rawValue.capitalized)", checked: st?.layout == .grid && p == st?.preset) { [wm] in wm.update { $0.layout = .grid; $0.preset = p } }
+            add(menu, L("Grid") + ": " + L(p.rawValue.capitalized), checked: st?.layout == .grid && p == st?.preset) { [wm] in wm.update { $0.layout = .grid; $0.preset = p } }
         }
         add(menu, "Next Grid Preset", action: "cycle-preset")
         add(menu, "Hard Grid: Lock Sizes", action: "toggle-hard", checked: st?.hard == true)
@@ -114,7 +116,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         add(menu, "Flip Split", action: "toggle-split")
         add(menu, "Balance Splits", action: "balance")
         add(menu, "Move to Other Display", action: "next-display")
-        let snap = NSMenuItem(title: "Snap", action: nil, keyEquivalent: "")
+        let snap = NSMenuItem(title: L("Snap"), action: nil, keyEquivalent: "")
         snap.submenu = NSMenu()
         for s in Snap.allCases { add(snap.submenu!, s.title, action: "snap-\(s.rawValue)") }
         menu.addItem(snap)
