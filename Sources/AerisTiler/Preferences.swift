@@ -64,8 +64,27 @@ final class PrefsModel: ObservableObject {
 
 // MARK: - Type and colour
 
+/// The type system. One family, three weights, and tracking set by size: Helvetica is drawn
+/// for text sizes, so large type is tightened and small type is opened a little. Bold is kept
+/// for the two display lines; emphasis in text uses Medium.
+private enum Face: String { case regular = "HelveticaNeue", medium = "HelveticaNeue-Medium", bold = "HelveticaNeue-Bold" }
+
+private func swissTracking(_ size: CGFloat) -> CGFloat {
+    switch size {
+    case 40...: return size * -0.03
+    case 24...: return size * -0.022
+    case 15...: return size * -0.012
+    case 13...: return 0
+    default: return size * 0.012
+    }
+}
+
 private extension Font {
-    static func swiss(_ size: CGFloat, bold: Bool = false) -> Font { .custom(bold ? "HelveticaNeue-Bold" : "HelveticaNeue", fixedSize: size) }
+    static func swiss(_ size: CGFloat, _ weight: Face = .regular) -> Font { .custom(weight.rawValue, fixedSize: size) }
+}
+
+private extension View {
+    func swiss(_ size: CGFloat, _ weight: Face = .regular) -> some View { font(.swiss(size, weight)).tracking(swissTracking(size)) }
 }
 
 private let ink = Color.primary
@@ -74,12 +93,12 @@ private let paper = Color(nsColor: Theme.background)
 /// Small capitals label: the section marks of the layout.
 private struct Caps: View {
     let text: String
-    var body: some View { Text(text.uppercased()).font(.swiss(10, bold: true)).kerning(1.2) }
+    var body: some View { Text(text.uppercased()).font(.swiss(10, .medium)).tracking(1.5) }
 }
 
 private struct Hairline: View {
     var weight: CGFloat = 1
-    var body: some View { Rectangle().fill(ink.opacity(weight > 1 ? 1 : 0.16)).frame(height: weight) }
+    var body: some View { Rectangle().fill(ink.opacity(weight > 1 ? 1 : 0.22)).frame(height: weight) }
 }
 
 // MARK: - Controls
@@ -109,7 +128,7 @@ private struct Choice<T: Hashable>: View {
         HStack(spacing: -1) {
             ForEach(options, id: \.0) { o in
                 Button { value = o.0 } label: {
-                    Text(o.1).font(.swiss(12, bold: value == o.0))
+                    Text(o.1).swiss(12, value == o.0 ? .medium : .regular)
                         .foregroundStyle(value == o.0 ? paper : ink)
                         .padding(.horizontal, 12).frame(height: 26)
                         .background(value == o.0 ? ink : .clear)
@@ -130,14 +149,14 @@ private struct Number: View {
     var zero: String?   // what to show at 0, e.g. "None"
     private func cell(_ s: String, _ d: Double) -> some View {
         Button { value = min(max(value + d, range.lowerBound), range.upperBound) } label: {
-            Text(s).font(.swiss(14)).frame(width: 26, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
+            Text(s).swiss(14).frame(width: 26, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
     var body: some View {
         HStack(spacing: -1) {
             cell("−", -1)
-            Text(value == 0 && zero != nil ? zero! : "\(Int(value)) \(unit)").font(.swiss(12, bold: true)).monospacedDigit().frame(width: 64, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
+            Text(value == 0 && zero != nil ? zero! : "\(Int(value)) \(unit)").swiss(12, .medium).monospacedDigit().frame(width: 64, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
             cell("+", 1)
         }
     }
@@ -170,7 +189,7 @@ private struct DiagramChoice<T: Hashable>: View {
                 Button { value = o.0 } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         Diagram(frames: o.2, selected: value == o.0)
-                        Text(o.1).font(.swiss(11, bold: value == o.0))
+                        Text(o.1).swiss(11, value == o.0 ? .medium : .regular)
                     }
                     .contentShape(Rectangle())
                 }
@@ -204,9 +223,10 @@ private struct Row<Control: View>: View {
     var stacked = false   // wide controls go under the text
     @ViewBuilder let control: Control
     var body: some View {
-        let text = VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.swiss(13, bold: true))
-            if let note { Text(note).font(.swiss(12)).foregroundStyle(ink.opacity(0.55)).fixedSize(horizontal: false, vertical: true) }
+        let text = VStack(alignment: .leading, spacing: 4) {
+            Text(title).swiss(13, .medium)
+            if let note { Text(note).swiss(12).lineSpacing(3).foregroundStyle(ink.opacity(0.55)).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 440, alignment: .leading) }   // a measure of about 70 characters
         }
         VStack(spacing: 0) {
             Group {
@@ -216,7 +236,7 @@ private struct Row<Control: View>: View {
                     HStack(alignment: .center, spacing: 24) { text; Spacer(minLength: 16); control }
                 }
             }
-            .padding(.vertical, 14)
+            .padding(.vertical, 16)
             Hairline()
         }
     }
@@ -234,9 +254,10 @@ struct PrefsView: View {
             Rectangle().fill(ink.opacity(0.16)).frame(width: 1)
             VStack(alignment: .leading, spacing: 0) {
                 let n = PrefsModel.Section.allCases.firstIndex(of: m.section)! + 1
-                Caps(text: String(format: "%02d", n)).padding(.bottom, 4)
-                Text(m.section.rawValue).font(.swiss(44, bold: true)).kerning(-1.6)
-                Hairline(weight: 2).padding(.top, 14)
+                Caps(text: String(format: "%02d", n)).foregroundStyle(ink.opacity(0.5)).padding(.bottom, 2)
+                // Large glyphs carry side bearing: pull the line left so its stem meets the rule.
+                Text(m.section.rawValue).swiss(48, .bold).offset(x: -2.5)
+                Hairline(weight: 2).padding(.top, 12)
                 ScrollView { VStack(spacing: 0) { content }.padding(.bottom, 24) }.scrollIndicators(.never)
             }
             .padding(.top, 52).padding(.horizontal, 40)
@@ -248,12 +269,16 @@ struct PrefsView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Aeris\nTiler").font(.swiss(30, bold: true)).kerning(-1).lineSpacing(-4).padding(.bottom, 36)
+            VStack(alignment: .leading, spacing: -7) {
+                Text("Aeris").swiss(28, .bold)
+                Text("Tiler").swiss(28, .bold)
+            }
+            .offset(x: -1.5).padding(.bottom, 40)
             ForEach(Array(PrefsModel.Section.allCases.enumerated()), id: \.1) { i, s in
                 Button { m.stopRecording(); m.section = s } label: {
                     HStack(spacing: 12) {
-                        Text(String(format: "%02d", i + 1)).font(.swiss(11)).monospacedDigit().foregroundStyle(ink.opacity(0.5))
-                        Text(s.rawValue).font(.swiss(14, bold: m.section == s))
+                        Text(String(format: "%02d", i + 1)).swiss(11).monospacedDigit().foregroundStyle(ink.opacity(0.5))
+                        Text(s.rawValue).swiss(14, m.section == s ? .medium : .regular)
                         Spacer()
                         if m.section == s { Rectangle().fill(ink).frame(width: 8, height: 8) }
                     }
@@ -264,10 +289,10 @@ struct PrefsView: View {
             }
             Spacer()
             Caps(text: "Now").foregroundStyle(ink.opacity(0.5)).padding(.bottom, 4)
-            Text(status()).font(.swiss(12, bold: true)).padding(.bottom, 14)
+            Text(status()).swiss(12, .medium).padding(.bottom, 14)
             Caps(text: "Config").foregroundStyle(ink.opacity(0.5)).padding(.bottom, 4)
             Button { NSWorkspace.shared.activateFileViewerSelecting([Config.url]) } label: {
-                Text("~/.config/aeris-tiler").font(.swiss(12)).underline()
+                Text("~/.config/aeris-tiler").swiss(12).underline()
             }
             .buttonStyle(.plain)
         }
@@ -301,7 +326,7 @@ struct PrefsView: View {
         case .border:
             Row(title: "Width", note: "The border marks the focused window. 0 is no border.") { Number(value: $m.config.borderWidth, range: 0...32, zero: "None") }
             Row(title: "Corner radius", note: "Match the corners of your windows.") { Number(value: $m.config.borderRadius, range: 0...40) }
-            Row(title: "Colour", note: "Pick a swatch, open the colour panel, or type a hex value.") {
+            Row(title: "Colour", note: "Pick a swatch, press + for any colour, or type a hex value.") {
                 HStack(spacing: 8) {
                     ForEach(["#000000", "#FFFFFF", "#808080", "#FF3B00"], id: \.self) { hex in
                         Button { m.config.borderColor = hex } label: {
@@ -310,10 +335,11 @@ struct PrefsView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    ColorPicker("", selection: Binding(get: { Color(nsColor: NSColor(hex: m.config.borderColor)) },
-                                                       set: { m.config.borderColor = NSColor($0).hex }), supportsOpacity: false)
-                        .labelsHidden().frame(width: 44, height: 26)
-                    TextField("#808080", text: $m.config.borderColor).textFieldStyle(.plain).font(.swiss(12, bold: true))
+                    Button { ColorPanel.shared.open(NSColor(hex: m.config.borderColor)) { m.config.borderColor = $0.hex } } label: {
+                        Text("+").swiss(15).frame(width: 26, height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).help("More colours")
+                    TextField("#808080", text: $m.config.borderColor).textFieldStyle(.plain).swiss(12, .medium)
                         .frame(width: 72, height: 26).padding(.horizontal, 8).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
                 }
             }
@@ -325,12 +351,12 @@ struct PrefsView: View {
                 ForEach(groups[g]!, id: \.id) { a in
                     VStack(spacing: 0) {
                         HStack {
-                            Text(a.title).font(.swiss(13))
+                            Text(a.title).swiss(13)
                             Spacer()
                             Button { m.recording == a.id ? m.stopRecording() : m.record(a.id) } label: {
                                 let rec = m.recording == a.id
                                 Text(rec ? "Press keys" : m.config.combo(a.id)?.parts.joined(separator: " ") ?? "—")
-                                    .font(.swiss(12, bold: true)).foregroundStyle(rec ? paper : ink)
+                                    .swiss(12, .medium).foregroundStyle(rec ? paper : ink)
                                     .frame(width: 120, height: 24).background(rec ? ink : .clear)
                                     .overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
                             }
@@ -342,10 +368,10 @@ struct PrefsView: View {
                 }
             }
             HStack {
-                Text("Click a key field, then press the new keys. Delete clears it, Esc cancels.").font(.swiss(12)).foregroundStyle(ink.opacity(0.55))
+                Text("Click a key field, then press the new keys. Delete clears it, Esc cancels.").swiss(12).foregroundStyle(ink.opacity(0.55))
                 Spacer()
                 Button { m.stopRecording(); m.config.bindings = Config().bindings } label: {
-                    Text("Reset all").font(.swiss(12, bold: true)).padding(.horizontal, 12).frame(height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
+                    Text("Reset all").swiss(12, .medium).padding(.horizontal, 12).frame(height: 26).overlay(Rectangle().strokeBorder(ink, lineWidth: 1)).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -368,10 +394,10 @@ private struct AppsList: View {
     var body: some View {
         Row(title: "Floating apps", note: "Windows of these apps are never tiled. Use the name the menu bar shows.") {
             HStack(spacing: -1) {
-                TextField("App name", text: $name).textFieldStyle(.plain).font(.swiss(12)).onSubmit(add)
+                TextField("App name", text: $name).textFieldStyle(.plain).swiss(12).onSubmit(add)
                     .frame(width: 180, height: 26).padding(.horizontal, 8).overlay(Rectangle().strokeBorder(ink, lineWidth: 1))
                 Button(action: add) {
-                    Text("Add").font(.swiss(12, bold: true)).foregroundStyle(paper).padding(.horizontal, 14).frame(height: 26).background(ink).contentShape(Rectangle())
+                    Text("Add").swiss(12, .medium).foregroundStyle(paper).padding(.horizontal, 14).frame(height: 26).background(ink).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -379,15 +405,33 @@ private struct AppsList: View {
         ForEach(apps, id: \.self) { app in
             VStack(spacing: 0) {
                 HStack {
-                    Text(app).font(.swiss(13))
+                    Text(app).swiss(13)
                     Spacer()
-                    Button { apps.removeAll { $0 == app } } label: { Text("Remove").font(.swiss(12)).underline().contentShape(Rectangle()) }.buttonStyle(.plain)
+                    Button { apps.removeAll { $0 == app } } label: { Text("Remove").swiss(12).underline().contentShape(Rectangle()) }.buttonStyle(.plain)
                 }
                 .padding(.vertical, 9)
                 Hairline()
             }
         }
     }
+}
+
+/// The system colour panel, for the border colour.
+final class ColorPanel: NSObject {
+    static let shared = ColorPanel()
+    private var pick: ((NSColor) -> Void)?
+
+    func open(_ color: NSColor, pick: @escaping (NSColor) -> Void) {
+        self.pick = pick
+        let p = NSColorPanel.shared
+        p.showsAlpha = false
+        p.color = color
+        p.setTarget(self)
+        p.setAction(#selector(changed(_:)))
+        p.orderFront(nil)
+    }
+
+    @objc private func changed(_ p: NSColorPanel) { pick?(p.color) }
 }
 
 // MARK: - Window
