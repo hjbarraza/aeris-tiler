@@ -19,6 +19,8 @@ yabai -m config mouse_action2 resize
 
 # Small utility windows float, like the AerisOS (Linux) float rules
 yabai -m rule --add app="^(System Settings|Calculator|Archive Utility|App Store|Activity Monitor|Tailscale|Raycast)$" manage=off
+# Hammerspoon draws alerts and its console as windows; tiling them would push real windows around
+yabai -m rule --add app="^Hammerspoon$" manage=off
 
 # Tell the bar when spaces or windows change
 yabai -m signal --add event=space_changed action="command -v sketchybar >/dev/null && sketchybar --trigger space_change"
@@ -34,4 +36,4 @@ yabai -m signal --add label=grid_deminimized event=window_deminimized action="$H
 
 # New windows open on the screen under the mouse (the one you're working on), not the main screen.
 yabai -m signal --add label=open_on_mouse_display event=window_created \
-    action='export PATH=/opt/homebrew/bin:$PATH; D=$(yabai -m query --displays --display mouse | jq .index); [ "$(yabai -m query --windows --window $YABAI_WINDOW_ID | jq .display)" != "$D" ] && yabai -m window $YABAI_WINDOW_ID --display $D && yabai -m window --focus $YABAI_WINDOW_ID && $HOME/.local/bin/grid --auto'
+    action='export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH; D=$(yabai -m query --displays --display mouse | jq .index); [ "$(yabai -m query --windows --window $YABAI_WINDOW_ID | jq .display)" != "$D" ] && yabai -m window $YABAI_WINDOW_ID --display $D && yabai -m window --focus $YABAI_WINDOW_ID && $HOME/.local/bin/grid --auto'

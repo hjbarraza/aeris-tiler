@@ -14,13 +14,17 @@ while IFS= read -r -d '' src; do
   mkdir -p "$(dirname "$dst")"
   if [[ -e $dst ]] && ! cmp -s "$src" "$dst"; then
     cp -p "$dst" "$dst.bak-$stamp"
-    echo "backed up $dst"
+    echo "backed up $dst -> $dst.bak-$stamp"
   fi
   cp -p "$src" "$dst"
 done < <(find home -type f -print0)
 chmod +x "$HOME/.local/bin/grid" "$HOME/.local/bin/tile" "$HOME/.local/bin/floating" "$HOME/.local/bin/layout"
 
-keysheet/build.sh
+if command -v swiftc >/dev/null; then
+  keysheet/build.sh
+else
+  echo "skipped the ⌘K cheat sheet: install the Command Line Tools (xcode-select --install), then re-run"
+fi
 
 yabai --restart-service 2>/dev/null || yabai --start-service
 skhd --restart-service 2>/dev/null || skhd --start-service

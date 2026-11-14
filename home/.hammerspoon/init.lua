@@ -64,7 +64,8 @@ end):start()
 -- back-to-back 20 px yabai steps until release (a tap still gives 60 px). Each step starts when
 -- the last one ends, so speed is set by how fast the apps redraw. The arrow moves the window's
 -- inner border in its direction (Hyprland dwindle); bsp re-tiles the neighbours.
-local yabai = "/opt/homebrew/bin/yabai"
+-- Homebrew installs to /opt/homebrew on Apple silicon and /usr/local on Intel.
+local yabai = hs.fs.attributes("/opt/homebrew/bin/yabai") and "/opt/homebrew/bin/yabai" or "/usr/local/bin/yabai"
 local gridState = os.getenv("HOME") .. "/.local/state/aeris/grid-spaces"
 -- 20 px: Safari ignores a top-edge shrink under ~20 px (it moves but keeps its height).
 local STEP, TAP_STEPS = 20, 3

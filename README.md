@@ -37,6 +37,12 @@ Hammerspoon also adds a Linux-style clipboard: selecting text copies it, right-c
 
 ## Install
 
+**With an AI agent** (Claude, ChatGPT, Gemini, Codex or any other): paste this prompt. The agent checks your Mac, asks before each change, installs the tools, walks you through the permissions and tests the result.
+
+> Set up aeris-tiler on my Mac. Follow https://raw.githubusercontent.com/hjbarraza/aeris-tiler/main/SETUP.md step by step and ask me before each change.
+
+**By hand:**
+
 1. Install the tools. Homebrew asks you to trust the two third-party taps first:
 
    ```bash
@@ -69,6 +75,7 @@ Hammerspoon also adds a Linux-style clipboard: selecting text copies it, right-c
 | `home/.warp/settings.toml` | Warp terminal settings. |
 | `keysheet/` | ⌘K cheat sheet, built by `install.sh` into `~/Applications/Keysheet.app`. |
 | `assets/` | Banner: `banner.svg` (source, uses the Söhne typeface), `banner.png`, and `banner-social.png` at 1280 × 640 for the GitHub social preview. |
+| `SETUP.md` | Step-by-step setup written for AI agents (and people): checks, questions, install, permissions, tests, custom shortcuts, undo. |
 | `resize-matrix.py` | Test: resizes every window on the current space in every direction and layout, and checks the result. About 3 min; keep hands off the mouse and keyboard. |
 
 ## Tools
