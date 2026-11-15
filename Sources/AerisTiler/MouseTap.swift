@@ -10,6 +10,7 @@ final class MouseTap {
     private var tap: CFMachPort?
     private var downAt: CGPoint?          // where the left button went down (copy on select, title-bar drags)
     private var lastHover = 0.0
+    private var hoverID: WindowID?   // the last normal window the pointer was over
 
     private struct Drag {
         let win: Win, resize: Bool, tiled: Bool, start: CGPoint, frame: CGRect
@@ -96,7 +97,14 @@ final class MouseTap {
         guard mode != .off, !wm.paused, now - lastHover > 0.04 else { return }
         lastHover = now
         // Not while a button is down, and not while one of this app's panels has the keyboard.
-        guard NSEvent.pressedMouseButtons == 0, NSApp.keyWindow == nil, let w = wm.window(at: p), w.standard else { return }
+        guard NSEvent.pressedMouseButtons == 0, NSApp.keyWindow == nil else { return }
+        // Focus changes only when the pointer enters another normal window, not on movement
+        // inside one. A popup that took the keyboard (a browser extension's, for one) closes
+        // when it loses focus; this way it keeps focus while the pointer is on the window below.
+        // Popups, menus and tooltips do not count as leaving: the pointer can cross one and come
+        // back to the same window without a focus change.
+        guard let w = wm.window(at: p), w.standard, w.id != hoverID else { return }
+        hoverID = w.id
         wm.focus(w, raise: mode == .raise)
     }
 
