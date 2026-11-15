@@ -11,7 +11,7 @@
 import AppKit
 import TilerCore
 
-let commandName = Notification.Name("com.aeris.tiler.command")
+let commandName = Notification.Name("tiler.aeris.co.command")
 
 // MARK: - App
 

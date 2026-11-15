@@ -3,6 +3,7 @@
 # tool to ~/.local/bin/aeris-tiler.
 #   ./build.sh          build and install
 #   ./build.sh run      build, install and (re)start the app
+#   ./build.sh dmg      build into build/ and make "build/Aeris Tiler.dmg" (the installed app is not touched)
 #   ./build.sh cert     create a local signing certificate, once (see below)
 #
 # Signing: macOS ties the Accessibility permission to the app's signature. An ad-hoc signature
@@ -37,8 +38,13 @@ fi
 
 swift build -c release
 bin=.build/release/AerisTiler
-app="$HOME/Applications/Aeris Tiler.app"
-pkill -x AerisTiler 2>/dev/null || true
+if [[ ${1:-} == dmg ]]; then
+  rm -rf build
+  app="build/Aeris Tiler.app"
+else
+  app="$HOME/Applications/Aeris Tiler.app"
+  pkill -x AerisTiler 2>/dev/null || true
+fi
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/AerisTiler"
 
@@ -50,7 +56,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleExecutable</key><string>AerisTiler</string>
-<key>CFBundleIdentifier</key><string>com.aeris.tiler</string>
+<key>CFBundleIdentifier</key><string>tiler.aeris.co</string>
 <key>CFBundleName</key><string>Aeris Tiler</string>
 <key>CFBundleDisplayName</key><string>Aeris Tiler</string>
 <key>CFBundlePackageType</key><string>APPL</string>
@@ -63,14 +69,62 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 </dict></plist>
 PLIST
 
-if [[ -n ${SIGN_ID:-} ]]; then
-  codesign --force --sign "$SIGN_ID" "$app"
-elif [[ -f $keychain ]]; then
-  security unlock-keychain -p "$pass" "$keychain"
-  codesign --force --sign "$name" --keychain "$keychain" "$app"
-else
-  echo "no signing identity: ad-hoc signature (run ./build.sh cert once to keep the Accessibility permission across builds)"
-  codesign --force --sign - "$app"
+sign() {
+  if [[ -n ${SIGN_ID:-} ]]; then
+    codesign --force --sign "$SIGN_ID" "$1"
+  elif [[ -f $keychain ]]; then
+    security unlock-keychain -p "$pass" "$keychain"
+    codesign --force --sign "$name" --keychain "$keychain" "$1"
+  else
+    echo "no signing identity: ad-hoc signature (run ./build.sh cert once to keep the Accessibility permission across builds)"
+    codesign --force --sign - "$1"
+  fi
+}
+sign "$app"
+
+if [[ ${1:-} == dmg ]]; then
+  # A disk image whose window shows the app, the Applications folder, and the instruction
+  # to drag one to the other. Finder stores the window layout in the image.
+  stage=build/stage
+  mkdir -p "$stage/.background"
+  cp -R "$app" "$stage/"
+  ln -s /Applications "$stage/Applications"
+  cp assets/dmg-background.tiff "$stage/.background/background.tiff"
+  hdiutil create -quiet -volname "Aeris Tiler" -srcfolder "$stage" -fs HFS+ -format UDRW build/rw.dmg
+  hdiutil detach -quiet "/Volumes/Aeris Tiler" 2>/dev/null || true   # an older copy that is still mounted
+  hdiutil attach -quiet -noautoopen build/rw.dmg
+  osascript <<'SCRIPT'
+tell application "Finder"
+  repeat 20 times   -- Finder needs a moment to see a new disk
+    if exists disk "Aeris Tiler" then exit repeat
+    delay 0.5
+  end repeat
+  tell disk "Aeris Tiler"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set bounds of container window to {200, 200, 760, 568}
+    set opts to icon view options of container window
+    set arrangement of opts to not arranged
+    set icon size of opts to 96
+    set text size of opts to 12
+    set background picture of opts to file ".background:background.tiff"
+    set position of item "Aeris Tiler.app" of container window to {158, 152}
+    set position of item "Applications" of container window to {402, 152}
+    update without registering applications
+    delay 2
+    close
+  end tell
+end tell
+SCRIPT
+  sync
+  hdiutil detach -quiet "/Volumes/Aeris Tiler"
+  hdiutil convert -quiet build/rw.dmg -format UDZO -o "build/Aeris Tiler.dmg"
+  rm -rf build/rw.dmg "$stage"
+  sign "build/Aeris Tiler.dmg"
+  echo "made $PWD/build/Aeris Tiler.dmg"
+  exit 0
 fi
 
 mkdir -p "$HOME/.local/bin"
