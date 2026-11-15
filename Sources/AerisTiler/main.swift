@@ -3,15 +3,50 @@
 // Run with no arguments, it is the app (menu bar item, no Dock icon). Run with arguments, it is
 // the command line for the running app, so scripts and agents can do all that the GUI can:
 //   aeris-tiler <action>          any id from `aeris-tiler actions` (focus-left, snap-left-half, ...);
-//                                 add `--window <id>` to act on that window, not the focused one
+//                                 add `--window <id>` to act on that window, not the focused one;
+//                                 `tidy` (or `grid`) puts free windows (float layout, or tiling paused) in a grid
 //   aeris-tiler set <key> <value> layout tile|grid|float · preset swiss|columns|main|board · hard true|false
 //                                 (these three change the space under the mouse) · login true|false
 //   aeris-tiler query             JSON: screens, layouts, windows, frames
 //   aeris-tiler reload            read ~/.config/aeris-tiler/config.json again
+//   aeris-tiler set log true      keep a usage log (see Usage); `aeris-tiler note <text> [--image <path>]` adds a line to it
 import AppKit
 import TilerCore
 
 let commandName = Notification.Name("tiler.aeris.co.command")
+
+// MARK: - Usage log
+//
+// With `usageLog` on, every action, keysheet search and note is one JSON line in
+// ~/.config/aeris-tiler/usage.jsonl. It never leaves this Mac. It answers: which actions and
+// layouts are in use, which never are, and what the user had to look up or could not do.
+
+enum Usage {
+    static let url = Config.url.deletingLastPathComponent().appendingPathComponent("usage.jsonl")
+
+    /// The folder for the images of notes.
+    static var notes: URL {
+        let dir = url.deletingLastPathComponent().appendingPathComponent("notes")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// A new file in the notes folder: the time, then `name`.
+    static func slot(_ name: String) -> URL { notes.appendingPathComponent("\(Int(Date().timeIntervalSince1970 * 1000))-\(name)") }
+
+    static func log(_ event: String, _ fields: [String: Any]) {
+        var e = fields
+        e["event"] = event
+        e["time"] = ISO8601DateFormatter().string(from: Date())
+        guard let line = try? JSONSerialization.data(withJSONObject: e, options: .sortedKeys) else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
+        guard let h = try? FileHandle(forWritingTo: url) else { return }
+        h.seekToEndOfFile()
+        h.write(line + Data("\n".utf8))
+        try? h.close()
+    }
+}
 
 // MARK: - App
 
@@ -31,7 +66,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Strings.language = Lang.resolve(wm.config.language)
         mouse = MouseTap(wm)
         keysheet = Keysheet { [wm] in wm.config }
-        status = StatusMenu(wm) { [unowned self] in self.run($0) }
+        keysheet.onClose = { [wm] query, hits in if wm.config.usageLog { Usage.log("search", ["query": query, "hits": hits]) } }
+        keysheet.onNote = { Usage.log("note", ["text": $0, "images": $1]) }
+        status = StatusMenu(wm) { [unowned self] in self.run($0, from: "menu") }
         prefs = PrefsWindow(PrefsModel(wm.config) { [unowned self] c in
             Strings.language = Lang.resolve(c.language)
             self.wm.setConfig(c)
@@ -59,15 +96,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         wm.start()
     }
 
-    /// Run an action from a hotkey, the menu or the command line.
+    /// Run an action from a hotkey ("key"), the menu or the command line.
     @discardableResult
-    func run(_ action: String, pressed: Bool = true) -> Bool {
+    func run(_ action: String, pressed: Bool = true, from source: String = "key") -> Bool {
+        var ok = true
         switch action {
         case "keysheet": if pressed { keysheet.toggle() }
         case "preferences": if pressed { prefs.show() }
-        default: return started && wm.perform(action, pressed: pressed)
+        default: ok = started && wm.perform(action, pressed: pressed)
         }
-        return true
+        if pressed, wm.config.usageLog {
+            // The state after the action: the layout a `cycle-layout` or `tidy` ended on.
+            var f: [String: Any] = ["action": action, "from": source, "ok": ok, "paused": wm.paused]
+            if let st = wm.current?.state { f["layout"] = st.layout.rawValue; f["preset"] = st.preset.rawValue }
+            if action == "tidy" || action == "grid" { f["tidy"] = wm.tidied.preset.rawValue }
+            Usage.log("action", f)
+        }
+        return ok
     }
 
     // MARK: Command line requests
@@ -90,6 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case ("layout", let v): if let l = Layout(rawValue: v) { wm.update { $0.layout = l } } else { out["ok"] = false }
             case ("preset", let v): if let p = Preset(rawValue: v) { wm.update { $0.layout = .grid; $0.preset = p } } else { out["ok"] = false }
             case ("hard", let v): wm.update { $0.hard = v == "true" }
+            case ("log", let v): var c = wm.config; c.usageLog = v == "true"; prefs.model.config = c; wm.setConfig(c)
             case ("login", let v): prefs.model.setLoginItem(v == "true"); out["login"] = prefs.model.loginItem
             default: out["ok"] = false
             }
@@ -101,12 +147,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 v.cacheDisplay(in: v.bounds, to: rep)
                 try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: args[1]))
             }
+        case "note" where !args.isEmpty:   // something the user wanted and could not do, in their words
+            var text: [String] = [], images: [String] = [], i = 0
+            while i < args.count {   // `--image <absolute path>` copies that file next to the note
+                if args[i] == "--image", i + 1 < args.count {
+                    let to = Usage.slot(URL(fileURLWithPath: args[i + 1]).lastPathComponent)
+                    if (try? FileManager.default.copyItem(atPath: args[i + 1], toPath: to.path)) != nil { images.append(to.path) } else { out["ok"] = false }
+                    i += 2
+                } else { text.append(args[i]); i += 1 }
+            }
+            Usage.log("note", ["text": text.joined(separator: " "), "images": images])
         case "quit":
             DispatchQueue.main.async { NSApp.terminate(nil) }
         default:
             // `--window <id>` (ids come from `query`) acts on that window instead of the focused one.
             if args.count == 2, args[0] == "--window" { wm.subject = UInt32(args[1]) }
-            out["ok"] = run(cmd)
+            out["ok"] = run(cmd, from: "cli")
             if cmd.hasPrefix("resize-") { run(cmd, pressed: false) }   // a tap: three steps
             wm.subject = nil
         }
@@ -120,7 +176,7 @@ enum CLI {
     static func run(_ args: [String]) -> Int32 {
         switch args[0] {
         case "-h", "--help", "help":
-            print("usage: aeris-tiler <action> [--window <id>] | set layout|preset|hard|login <value> | query | reload | actions | quit")
+            print("usage: aeris-tiler <action> [--window <id>] | set layout|preset|hard|login|log <value> | note <text> [--image <path>] | query | reload | actions | quit")
             return 0
         case "actions":
             let c = Config.load()

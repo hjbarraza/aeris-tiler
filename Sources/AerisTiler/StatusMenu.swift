@@ -115,6 +115,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         add(menu, "Float Window", action: "toggle-float")
         add(menu, "Flip Split", action: "toggle-split")
         add(menu, "Balance Splits", action: "balance")
+        add(menu, "Tidy Windows", action: "tidy")
         add(menu, "Move to Other Display", action: "next-display")
         let snap = NSMenuItem(title: L("Snap"), action: nil, keyEquivalent: "")
         snap.submenu = NSMenu()

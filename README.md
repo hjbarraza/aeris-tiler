@@ -22,6 +22,7 @@ Needs an Apple Silicon Mac and macOS 14 or later.
 | FLOAT | Plain macOS: windows stay where you put them. |
 
 - ⌘⌥← cycles the layouts. ⌘K lists every key.
+- ⌃⌥T tidies when automatic tiling is off (FLOAT layout, or paused with ⌃⌥P): the windows go into the Swiss grid with no holes. Press again for the next grid: Columns, Main, Board. ⌃⌥⌘ + arrow, or ctrl + drag onto another window, swaps two windows. Command line: `aeris-tiler tidy` or `aeris-tiler grid`.
 - The menu bar icon opens the menu and Preferences: keys, gaps, mouse, border, language, launch at login.
 - The app uses private macOS calls, so a macOS update can break parts of it.
 
@@ -34,6 +35,10 @@ Needs an Apple Silicon Mac and macOS 14 or later.
 ```
 
 A source build links the command line tool to `~/.local/bin/aeris-tiler`. `aeris-tiler actions` lists what it can do.
+
+## Usage log
+
+Off by default. `aeris-tiler set log true` writes one line per action, keysheet search and note to `~/.config/aeris-tiler/usage.jsonl`. The file stays on your Mac. `aeris-tiler note "what I wanted to do"` adds a line in your own words. So does ⌘K, your text, Return. Drop an image on the keysheet, or paste one with ⌘V, to keep it with the note in `~/.config/aeris-tiler/notes/`.
 
 ## Credits
 

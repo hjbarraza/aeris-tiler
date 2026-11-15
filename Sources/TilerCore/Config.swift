@@ -65,6 +65,7 @@ public struct Action {
             Action(id: "toggle-hard", title: "Grid hard or soft: lock or free the sizes", group: "Layout", keys: "ctrl+alt-h"),
             Action(id: "toggle-split", title: "Flip split: columns or rows", group: "Layout", keys: "ctrl+alt-j"),
             Action(id: "balance", title: "Balance splits", group: "Layout", keys: "ctrl+alt-b"),
+            Action(id: "tidy", title: "Tidy free windows into a grid; again for the next grid", group: "Layout", keys: "ctrl+alt-t"),
             Action(id: "pause", title: "Pause or resume tiling", group: "Layout", keys: "ctrl+alt-p"),
             Action(id: "maximize", title: "Maximize or restore", group: "Window", keys: "alt+cmd-up"),
             Action(id: "toggle-float", title: "Float or unfloat", group: "Window", keys: "alt+cmd-down"),
@@ -108,6 +109,7 @@ public struct Config: Codable, Equatable {
     public var borderWidth = 4.0            // border on the focused window; 0 = no border
     public var borderRadius = 16.0          // corner radius of the windows the border wraps
     public var borderColor = "#808080"
+    public var usageLog = false             // write every action to usage.jsonl, next to this file
     public var floatApps = ["System Settings", "Calculator", "Archive Utility", "App Store", "Activity Monitor", "Raycast"]
     public var bindings: [String: String] = Dictionary(uniqueKeysWithValues: Action.all.compactMap { a in a.keys.map { (a.id, $0) } })
 

@@ -119,6 +119,21 @@ final class TilerCoreTests: XCTestCase {
         assertTiles(Array(f.values))
     }
 
+    func testTidyFillsTheAreaAndKeepsWindowsNearTheirPlace() {
+        func at(_ x: CGFloat, _ y: CGFloat) -> CGRect { CGRect(x: x, y: y, width: 300, height: 200) }
+        // Scattered windows: 1 bottom right, 2 top left, 3 top right, 4 bottom left.
+        let f = tidy([(1, at(900, 600)), (2, at(40, 30)), (3, at(1000, 10)), (4, at(100, 500))], .board, in: area, gap: 8)
+        assertTiles(Array(f.values))
+        XCTAssertEqual(f[2]!.origin, area.origin)
+        XCTAssertTrue(f[4]!.minX == f[2]!.minX && f[4]!.minY > f[2]!.minY)
+        XCTAssertTrue(f[3]!.minX > f[2]!.minX && f[3]!.minY == f[2]!.minY)
+        XCTAssertTrue(f[1]!.minX == f[3]!.minX && f[1]!.minY > f[3]!.minY)
+        // Swiss is the default: side | middle | side, left to right by position.
+        let s = tidy([(1, at(900, 600)), (2, at(40, 30)), (4, at(400, 500))], in: area, gap: 8)
+        assertTiles(Array(s.values))
+        XCTAssertTrue(s[2]!.minX < s[4]!.minX && s[4]!.minX < s[1]!.minX && s[4]!.width > s[2]!.width)
+    }
+
     func testSnap() {
         let size = CGSize(width: 800, height: 600)
         XCTAssertEqual(Snap.leftHalf.frame(in: area, gap: 8, size: size), CGRect(x: 8, y: 8, width: 948, height: 1064))

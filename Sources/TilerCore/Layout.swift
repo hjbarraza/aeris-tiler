@@ -208,6 +208,19 @@ extension Tree {
     }
 }
 
+/// Frames that put free windows into a preset's grid, which fills `area`.
+/// Each window takes the cell nearest to where it is: columns fill left to right, and the
+/// windows of a column go top to bottom.
+public func tidy(_ windows: [(id: WindowID, frame: CGRect)], _ preset: Preset = .swiss, in area: CGRect, gap: CGFloat) -> [WindowID: CGRect] {
+    var rest = windows.sorted { $0.frame.midX < $1.frame.midX }[...]
+    var order: [WindowID] = []
+    for c in preset.columns(windows.count) {
+        order += rest.prefix(c.rows).sorted { $0.frame.midY < $1.frame.midY }.map(\.id)
+        rest = rest.dropFirst(c.rows)
+    }
+    return Tree(preset, windows: order, in: area, gap: gap).frames(in: area, gap: gap)
+}
+
 // MARK: - Snap: fixed positions for one window
 
 public enum Snap: String, CaseIterable {

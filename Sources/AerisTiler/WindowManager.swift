@@ -50,6 +50,7 @@ final class WindowManager {
     private var spaces: [UInt64: SpaceState] = [:]
     private var floating: Set<WindowID> = []           // windows floated by hand
     private var restore: [WindowID: CGRect] = [:]      // frame before a floating maximize
+    private(set) var tidied: (preset: Preset, frames: [WindowID: CGRect]) = (.swiss, [:])   // the last tidy
     private var seen: Set<WindowID> = []
     private var seeded = false
     private var lastFocus: WindowID?
@@ -403,6 +404,7 @@ final class WindowManager {
         case ("toggle", "float"): toggleFloat()
         case ("next", "display"): nextDisplay()
         case ("balance", _): withState { st, _ in st.tree.balance(); st.gridKey = "" }   // the grid goes back to its preset
+        case ("tidy", _), ("grid", _): tidy()   // `grid` is a second name for the command line
         case ("maximize", _): maximize()
         case ("pause", _): paused.toggle()
         default: return false
@@ -427,7 +429,20 @@ final class WindowManager {
         body(state(s[w.screen].space), w)
     }
 
+    /// Two free windows trade places and sizes. A tidied grid stays a grid.
+    private func trade(_ a: Win, _ b: Win, from fa: CGRect, _ fb: CGRect) {
+        a.ax.setFrame(fb); b.ax.setFrame(fa)
+        if tidied.frames[a.id] != nil, tidied.frames[b.id] != nil { tidied.frames[a.id] = fb; tidied.frames[b.id] = fa }
+    }
+
+    private func isFree(_ w: Win) -> Bool { !isTiled(w) && w.standard && w.resizable && !w.fullscreen }
+
     private func swap(_ d: Direction) {
+        if let me = focused, isFree(me) {
+            let others = wins.filter { $0.id != me.id && $0.screen == me.screen && isFree($0) }.map { (id: $0.id, frame: $0.frame) }
+            if let id = neighbor(of: me.frame, d, among: others), let other = wins.first(where: { $0.id == id }) { trade(me, other, from: me.frame, other.frame) }
+            return
+        }
         withState { st, me in
             let others = wins.filter { $0.id != me.id && $0.screen == me.screen && isTiled($0) }.map { (id: $0.id, frame: targets[$0.id]!) }
             guard let other = neighbor(of: targets[me.id]!, d, among: others) else { return }
@@ -436,9 +451,14 @@ final class WindowManager {
         }
     }
 
-    /// Swap a tiled window with the tiled window under a point (drop after a drag).
+    /// Swap a tiled or tidied window with the one under a point (drop after a ctrl + drag).
     func drop(_ id: WindowID, at p: CGPoint) {
         let s = screens()
+        // A tidied window dropped on another tidied window: they trade cells.
+        if let me = wins.first(where: { $0.id == id }), !isTiled(me), let cell = tidied.frames[id] {
+            if let other = wins.first(where: { $0.id != id && tidied.frames[$0.id]?.contains(p) == true }) { trade(me, other, from: cell, tidied.frames[other.id]!) }
+            return
+        }
         guard let me = wins.first(where: { $0.id == id }), isTiled(me), me.screen < s.count,
               let other = wins.first(where: { $0.id != id && $0.screen == me.screen && targets[$0.id]?.contains(p) == true }) else { return }
         let st = state(s[me.screen].space)
@@ -467,6 +487,21 @@ final class WindowManager {
         floating.insert(w.id)
         let a = area(s[w.screen])   // centred, two thirds of the area
         w.ax.setFrame(CGRect(x: a.minX + a.width / 6, y: a.minY + a.height / 6, width: a.width * 2 / 3, height: a.height * 2 / 3).integral)
+    }
+
+    /// With automatic tiling off (float layout, or tiling paused): put the windows of the
+    /// display under the mouse into a grid, once. They stay free afterwards. The first press
+    /// gives the Swiss grid; a press while the windows still sit in that grid gives the next preset.
+    private func tidy() {
+        let s = screens(), i = mouseScreen
+        guard i < s.count, !s[i].fullscreen, paused || state(s[i].space).layout == .float else { return }
+        let free = wins.filter { $0.screen == i && $0.standard && $0.resizable && !$0.fullscreen && !config.floatApps.contains($0.app) }
+        let again = !free.isEmpty && free.allSatisfy { w in tidied.frames[w.id].map { near($0, w.frame) } == true }
+        let preset = again ? tidied.preset.next : .swiss
+        let frames = TilerCore.tidy(free.map { (id: $0.id, frame: $0.frame) }, preset, in: area(s[i]), gap: config.gap)
+        tidied = (preset, [:])
+        // Remember where each window came to rest: an app may refuse the size asked for.
+        for w in free { if let f = frames[w.id] { w.ax.setFrame(f); tidied.frames[w.id] = w.ax.frame ?? f } }
     }
 
     private func snap(_ pos: Snap) {
